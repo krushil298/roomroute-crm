@@ -30,6 +30,10 @@ export function LeadImport() {
   const importMutation = useMutation({
     mutationFn: async (contacts: ImportContact[]) => {
       const response = await apiRequest("POST", "/api/contacts/import", { contacts });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || errorData.message || "Import failed");
+      }
       return await response.json();
     },
     onSuccess: (data: any) => {
@@ -41,10 +45,11 @@ export function LeadImport() {
         description: `Imported ${data.imported || data.length || 0} lead(s) successfully`,
       });
     },
-    onError: () => {
+    onError: (error: Error) => {
+      console.error("Import error:", error);
       toast({
-        title: "Error",
-        description: "Failed to import leads. Please check the format.",
+        title: "Import Failed",
+        description: error.message || "Failed to import leads. Please check the format.",
         variant: "destructive",
       });
     },
