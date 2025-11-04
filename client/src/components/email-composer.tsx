@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Send, FileText } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -41,6 +41,12 @@ export function EmailComposer({
   const [body, setBody] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState("");
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (open && recipientEmail) {
+      setTo(recipientEmail);
+    }
+  }, [open, recipientEmail]);
 
   const { data: emailTemplates = [] } = useQuery<EmailTemplate[]>({
     queryKey: ["/api/email-templates"],
@@ -94,10 +100,6 @@ export function EmailComposer({
     }
     sendEmailMutation.mutate({ to, subject, body });
   };
-
-  useState(() => {
-    setTo(recipientEmail);
-  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

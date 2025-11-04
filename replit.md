@@ -68,13 +68,13 @@ A comprehensive CRM (Customer Relationship Management) system built with Node.js
 - Pipeline overview with deals by stage
 - Quick actions panel
 
-## Email Integration Note
-**Email sending is currently stubbed** - emails are logged to console. To enable real email sending:
-- Option 1: Set up Resend integration via Replit integrations panel
-- Option 2: Set up SendGrid, Gmail, or other email service
-- Option 3: Provide API credentials for your preferred email service
+## Email Integration
+**Resend integration is active** - The application uses Resend to send real emails. The RESEND_API_KEY secret is configured.
+- Email sending is handled via the `/api/send-email` endpoint
+- Uses "onboarding@resend.dev" as the sender (this is a Resend sandbox domain for testing)
+- For production, you'll want to verify your own domain in Resend
 
-The `/api/send-email` endpoint is ready to be connected to a real email service.
+To change the sender email, update the `from` field in `server/routes.ts`.
 
 ## Development
 
@@ -153,3 +153,6 @@ Syncs the Drizzle schema with the PostgreSQL database.
 - Integrated email composer with template selection
 - Populated database with sample email and contract templates
 - Dashboard now shows real data from the database
+- Integrated Resend for real email sending
+- Added sample contact, deal, and activity data for testing
+- Fixed email composer state management for proper recipient handling

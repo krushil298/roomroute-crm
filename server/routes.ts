@@ -293,9 +293,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!to || !subject || !body) {
         return res.status(400).json({ error: "Missing required fields" });
       }
-      console.log("Email send request:", { to, subject, bodyLength: body.length });
-      res.json({ success: true, message: "Email queued for sending" });
+      
+      if (!process.env.RESEND_API_KEY) {
+        console.log("Email send request (no Resend configured):", { to, subject, bodyLength: body.length });
+        return res.json({ success: true, message: "Email logged (Resend not configured)" });
+      }
+
+      const { Resend } = await import("resend");
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      
+      await resend.emails.send({
+        from: "CRM App <onboarding@resend.dev>",
+        to: [to],
+        subject: subject,
+        html: body.replace(/\n/g, "<br>"),
+      });
+
+      res.json({ success: true, message: "Email sent successfully" });
     } catch (error) {
+      console.error("Email send error:", error);
       res.status(500).json({ error: "Failed to send email" });
     }
   });
