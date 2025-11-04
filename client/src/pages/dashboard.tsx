@@ -2,97 +2,95 @@ import { KPICard } from "@/components/kpi-card";
 import { ActivityFeed } from "@/components/activity-feed";
 import { QuickActions } from "@/components/quick-actions";
 import { PipelineStage } from "@/components/pipeline-stage";
-import { Users, TrendingUp, DollarSign, Activity } from "lucide-react";
+import { Users, TrendingUp, DollarSign, Activity as ActivityIcon } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { formatDistanceToNow } from "date-fns";
+import type { Contact, Deal, Activity } from "@shared/schema";
 
 export default function Dashboard() {
+  const { data: contacts = [] } = useQuery<Contact[]>({
+    queryKey: ["/api/contacts"],
+  });
+
+  const { data: deals = [] } = useQuery<Deal[]>({
+    queryKey: ["/api/deals"],
+  });
+
+  const { data: activities = [] } = useQuery<Activity[]>({
+    queryKey: ["/api/activities"],
+  });
+
+  const totalPipelineValue = deals.reduce((sum, deal) => 
+    sum + Number(deal.value), 0
+  );
+
   const kpis = [
     {
       title: "Total Contacts",
-      value: 1247,
+      value: contacts.length,
       icon: Users,
       trend: { value: 12.5, isPositive: true },
     },
     {
       title: "Active Deals",
-      value: 43,
+      value: deals.filter(d => d.stage !== "closed").length,
       icon: TrendingUp,
       trend: { value: 8.2, isPositive: true },
     },
     {
       title: "Pipeline Value",
-      value: "$847K",
+      value: `$${(totalPipelineValue / 1000).toFixed(0)}K`,
       icon: DollarSign,
       trend: { value: 15.3, isPositive: true },
     },
     {
       title: "This Week",
-      value: 156,
-      icon: Activity,
+      value: activities.length,
+      icon: ActivityIcon,
       trend: { value: 3.1, isPositive: false },
     },
   ];
 
-  const recentActivities = [
-    {
-      id: "1",
-      type: "call" as const,
-      title: "Called about proposal follow-up",
-      contact: "Sarah Johnson",
-      timestamp: "2 hours ago",
-    },
-    {
-      id: "2",
-      type: "email" as const,
-      title: "Sent pricing information",
-      contact: "Mike Chen",
-      timestamp: "4 hours ago",
-    },
-    {
-      id: "3",
-      type: "meeting" as const,
-      title: "Demo scheduled",
-      contact: "Emily Rodriguez",
-      timestamp: "Yesterday",
-    },
-    {
-      id: "4",
-      type: "note" as const,
-      title: "Added follow-up note",
-      contact: "David Kim",
-      timestamp: "Yesterday",
-    },
-    {
-      id: "5",
-      type: "call" as const,
-      title: "Discovery call completed",
-      contact: "Lisa Anderson",
-      timestamp: "2 days ago",
-    },
-  ];
+  const recentActivities = activities
+    .slice(0, 5)
+    .map((activity) => ({
+      id: activity.id,
+      type: activity.type as "call" | "email" | "meeting" | "note",
+      title: activity.description,
+      contact: contacts.find(c => c.id === activity.contactId)?.name || "Unknown",
+      timestamp: formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true }),
+    }));
+
+  const dealsByStage = (stage: string) => 
+    deals
+      .filter(d => d.stage.toLowerCase() === stage.toLowerCase())
+      .map(deal => ({
+        id: deal.id,
+        title: deal.title,
+        value: Number(deal.value),
+        contact: contacts.find(c => c.id === deal.contactId)?.name || "Unknown",
+      }));
 
   const pipelineData = [
     {
-      stage: "New",
-      deals: [
-        { id: "1", title: "Website Redesign", value: 15000, contact: "John Smith" },
-        { id: "2", title: "Mobile App Dev", value: 35000, contact: "Jane Doe" },
-      ],
+      stage: "Lead",
+      deals: dealsByStage("lead"),
       color: "blue",
     },
     {
       stage: "Qualified",
-      deals: [
-        { id: "3", title: "Cloud Migration", value: 28000, contact: "Bob Wilson" },
-      ],
+      deals: dealsByStage("qualified"),
       color: "purple",
     },
     {
       stage: "Proposal",
-      deals: [
-        { id: "4", title: "Enterprise License", value: 45000, contact: "Sarah Johnson" },
-        { id: "5", title: "Consulting Package", value: 12000, contact: "Mike Chen" },
-      ],
+      deals: dealsByStage("proposal"),
       color: "orange",
+    },
+    {
+      stage: "Negotiation",
+      deals: dealsByStage("negotiation"),
+      color: "green",
     },
   ];
 

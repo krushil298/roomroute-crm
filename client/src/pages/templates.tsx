@@ -4,51 +4,23 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Search } from "lucide-react";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { formatDistanceToNow } from "date-fns";
+import type { ContractTemplate, EmailTemplate } from "@shared/schema";
 
 export default function Templates() {
   const [searchQuery, setSearchQuery] = useState("");
 
-  const lnrTemplates = [
-    {
-      name: "Standard LNR Agreement",
-      type: "lnr" as const,
-      description: "Standard lease agreement template for long-term rentals with customizable terms and conditions.",
-      lastModified: "2 days ago",
-    },
-    {
-      name: "Short-term LNR Contract",
-      type: "lnr" as const,
-      description: "Flexible short-term rental agreement with weekly or monthly payment options.",
-      lastModified: "1 week ago",
-    },
-    {
-      name: "Premium LNR Package",
-      type: "lnr" as const,
-      description: "Comprehensive rental agreement with premium amenities and services included.",
-      lastModified: "3 days ago",
-    },
-  ];
+  const { data: contractTemplates = [], isLoading: loadingContracts } = useQuery<ContractTemplate[]>({
+    queryKey: ["/api/contract-templates"],
+  });
 
-  const groupTemplates = [
-    {
-      name: "Group Booking Agreement",
-      type: "group" as const,
-      description: "Standard contract for group reservations with multiple rooms and extended stays.",
-      lastModified: "1 week ago",
-    },
-    {
-      name: "Corporate Group Contract",
-      type: "group" as const,
-      description: "Tailored agreement for corporate groups with special rates and additional services.",
-      lastModified: "4 days ago",
-    },
-    {
-      name: "Event Group Package",
-      type: "group" as const,
-      description: "Specialized contract for event-based group bookings with flexible terms.",
-      lastModified: "5 days ago",
-    },
-  ];
+  const { data: emailTemplates = [], isLoading: loadingEmails } = useQuery<EmailTemplate[]>({
+    queryKey: ["/api/email-templates"],
+  });
+
+  const lnrTemplates = contractTemplates.filter(t => t.type === "lnr");
+  const groupTemplates = contractTemplates.filter(t => t.type === "group");
 
   return (
     <div className="p-6 space-y-6">
@@ -89,61 +61,88 @@ export default function Templates() {
           </TabsTrigger>
         </TabsList>
         <TabsContent value="lnr" className="space-y-4 mt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {lnrTemplates.map((template) => (
-              <ContractTemplateCard
-                key={template.name}
-                {...template}
-                onUse={() => console.log("Use template:", template.name)}
-                onEdit={() => console.log("Edit template:", template.name)}
-                onPreview={() => console.log("Preview template:", template.name)}
-              />
-            ))}
-          </div>
+          {loadingContracts ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="h-48 bg-muted animate-pulse rounded-md" />
+              ))}
+            </div>
+          ) : lnrTemplates.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">No LNR templates yet</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {lnrTemplates.map((template) => (
+                <ContractTemplateCard
+                  key={template.id}
+                  name={template.name}
+                  type={template.type as "lnr" | "group"}
+                  description={template.description}
+                  lastModified={formatDistanceToNow(new Date(template.updatedAt), { addSuffix: true })}
+                  onUse={() => console.log("Use template:", template.name)}
+                  onEdit={() => console.log("Edit template:", template.name)}
+                  onPreview={() => console.log("Preview template:", template.name)}
+                />
+              ))}
+            </div>
+          )}
         </TabsContent>
         <TabsContent value="group" className="space-y-4 mt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {groupTemplates.map((template) => (
-              <ContractTemplateCard
-                key={template.name}
-                {...template}
-                onUse={() => console.log("Use template:", template.name)}
-                onEdit={() => console.log("Edit template:", template.name)}
-                onPreview={() => console.log("Preview template:", template.name)}
-              />
-            ))}
-          </div>
+          {loadingContracts ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="h-48 bg-muted animate-pulse rounded-md" />
+              ))}
+            </div>
+          ) : groupTemplates.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">No group templates yet</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {groupTemplates.map((template) => (
+                <ContractTemplateCard
+                  key={template.id}
+                  name={template.name}
+                  type={template.type as "lnr" | "group"}
+                  description={template.description}
+                  lastModified={formatDistanceToNow(new Date(template.updatedAt), { addSuffix: true })}
+                  onUse={() => console.log("Use template:", template.name)}
+                  onEdit={() => console.log("Edit template:", template.name)}
+                  onPreview={() => console.log("Preview template:", template.name)}
+                />
+              ))}
+            </div>
+          )}
         </TabsContent>
         <TabsContent value="email" className="space-y-4 mt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <ContractTemplateCard
-              name="Introduction Email"
-              type="lnr"
-              description="Standard introduction email template for new leads and prospects."
-              lastModified="1 day ago"
-              onUse={() => console.log("Use email template")}
-              onEdit={() => console.log("Edit email template")}
-              onPreview={() => console.log("Preview email template")}
-            />
-            <ContractTemplateCard
-              name="Follow-up Email"
-              type="lnr"
-              description="Professional follow-up template for ongoing conversations."
-              lastModified="3 days ago"
-              onUse={() => console.log("Use email template")}
-              onEdit={() => console.log("Edit email template")}
-              onPreview={() => console.log("Preview email template")}
-            />
-            <ContractTemplateCard
-              name="Proposal Email"
-              type="group"
-              description="Formal proposal submission email with attachment guidelines."
-              lastModified="1 week ago"
-              onUse={() => console.log("Use email template")}
-              onEdit={() => console.log("Edit email template")}
-              onPreview={() => console.log("Preview email template")}
-            />
-          </div>
+          {loadingEmails ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="h-48 bg-muted animate-pulse rounded-md" />
+              ))}
+            </div>
+          ) : emailTemplates.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">No email templates yet</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {emailTemplates.map((template) => (
+                <ContractTemplateCard
+                  key={template.id}
+                  name={template.name}
+                  type="lnr"
+                  description={`Subject: ${template.subject}`}
+                  lastModified={formatDistanceToNow(new Date(template.updatedAt), { addSuffix: true })}
+                  onUse={() => console.log("Use email template:", template.name)}
+                  onEdit={() => console.log("Edit email template:", template.name)}
+                  onPreview={() => console.log("Preview email template:", template.name)}
+                />
+              ))}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>

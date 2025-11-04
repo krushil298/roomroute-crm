@@ -18,6 +18,10 @@ import {
 } from "@/components/ui/select";
 import { Send, FileText } from "lucide-react";
 import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import type { EmailTemplate } from "@shared/schema";
 
 interface EmailComposerProps {
   open: boolean;
@@ -25,54 +29,6 @@ interface EmailComposerProps {
   recipientEmail?: string;
   recipientName?: string;
 }
-
-const emailTemplates = [
-  {
-    id: "intro",
-    name: "Introduction Email",
-    subject: "Great to connect with you",
-    body: `Dear [Name],
-
-It was wonderful speaking with you today. I wanted to follow up on our conversation and provide you with some additional information about our services.
-
-We specialize in helping businesses like yours achieve their goals through our comprehensive solutions. I believe we can add significant value to your operations.
-
-Would you be available for a brief call next week to discuss this further?
-
-Best regards,
-[Your Name]`,
-  },
-  {
-    id: "followup",
-    name: "Follow-up Email",
-    subject: "Following up on our conversation",
-    body: `Hi [Name],
-
-I wanted to follow up on our previous discussion and see if you had any questions about the proposal I sent over.
-
-I'm here to help clarify any details and discuss how we can move forward together.
-
-Looking forward to hearing from you.
-
-Best,
-[Your Name]`,
-  },
-  {
-    id: "proposal",
-    name: "Proposal Email",
-    subject: "Proposal for your review",
-    body: `Dear [Name],
-
-Thank you for your interest in our services. I've prepared a customized proposal based on our discussion.
-
-The attached document outlines our recommended approach, timeline, and pricing structure. I believe this solution will address your specific needs effectively.
-
-Please review at your convenience, and let me know if you'd like to schedule a call to discuss any aspects in detail.
-
-Best regards,
-[Your Name]`,
-  },
-];
 
 export function EmailComposer({
   open,
@@ -84,22 +40,64 @@ export function EmailComposer({
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState("");
+  const { toast } = useToast();
+
+  const { data: emailTemplates = [] } = useQuery<EmailTemplate[]>({
+    queryKey: ["/api/email-templates"],
+    enabled: open,
+  });
+
+  const sendEmailMutation = useMutation({
+    mutationFn: async (emailData: { to: string; subject: string; body: string }) => {
+      return await apiRequest("/api/send-email", {
+        method: "POST",
+        body: JSON.stringify(emailData),
+        headers: { "Content-Type": "application/json" },
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Email sent",
+        description: "Your email has been sent successfully",
+      });
+      onOpenChange(false);
+      setSubject("");
+      setBody("");
+      setSelectedTemplate("");
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to send email. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const handleTemplateSelect = (templateId: string) => {
     const template = emailTemplates.find((t) => t.id === templateId);
     if (template) {
       setSubject(template.subject);
-      setBody(template.body.replace("[Name]", recipientName || ""));
+      setBody(template.body.replace(/\[Name\]/g, recipientName || ""));
       setSelectedTemplate(templateId);
     }
   };
 
   const handleSend = () => {
-    console.log("Sending email to:", to);
-    console.log("Subject:", subject);
-    console.log("Body:", body);
-    onOpenChange(false);
+    if (!to || !subject || !body) {
+      toast({
+        title: "Missing fields",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+    sendEmailMutation.mutate({ to, subject, body });
   };
+
+  useState(() => {
+    setTo(recipientEmail);
+  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -165,7 +163,7 @@ export function EmailComposer({
               value={body}
               onChange={(e) => setBody(e.target.value)}
               placeholder="Write your message..."
-              className="min-h-[300px] resize-none"
+              className="min-h-[300px]"
               data-testid="textarea-email-body"
             />
           </div>
@@ -175,12 +173,17 @@ export function EmailComposer({
             variant="outline"
             onClick={() => onOpenChange(false)}
             data-testid="button-cancel-email"
+            disabled={sendEmailMutation.isPending}
           >
             Cancel
           </Button>
-          <Button onClick={handleSend} data-testid="button-send-email">
+          <Button
+            onClick={handleSend}
+            data-testid="button-send-email"
+            disabled={sendEmailMutation.isPending}
+          >
             <Send className="h-4 w-4 mr-2" />
-            Send Email
+            {sendEmailMutation.isPending ? "Sending..." : "Send Email"}
           </Button>
         </DialogFooter>
       </DialogContent>
