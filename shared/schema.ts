@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, timestamp, decimal, index, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, timestamp, decimal, boolean, index, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -33,6 +33,19 @@ export type User = typeof users.$inferSelect;
 export const organizations = pgTable("organizations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
+  // Hotel Profile Information
+  numberOfRooms: integer("number_of_rooms"),
+  address: text("address"),
+  city: text("city"),
+  state: text("state"),
+  zipCode: text("zip_code"),
+  country: text("country"),
+  contactName: text("contact_name"),
+  contactPhone: text("contact_phone"),
+  contactEmail: text("contact_email"),
+  hasMeetingRooms: boolean("has_meeting_rooms").default(false),
+  meetingRoomCapacity: integer("meeting_room_capacity"),
+  meetingRoomDetails: text("meeting_room_details"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
