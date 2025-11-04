@@ -65,6 +65,7 @@ export default function Settings() {
 
   const updateMutation = useMutation({
     mutationFn: async (data: OrganizationProfile) => {
+      console.log("Sending organization update:", JSON.stringify(data, null, 2));
       return await apiRequest("PATCH", "/api/organization/profile", data);
     },
     onSuccess: () => {
@@ -75,6 +76,7 @@ export default function Settings() {
       });
     },
     onError: (error: Error) => {
+      console.error("Organization update error:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to update profile",
@@ -84,6 +86,8 @@ export default function Settings() {
   });
 
   const onSubmit = (data: OrganizationProfile) => {
+    console.log("Form submitted with data:", JSON.stringify(data, null, 2));
+    console.log("Form errors:", form.formState.errors);
     updateMutation.mutate(data);
   };
 
