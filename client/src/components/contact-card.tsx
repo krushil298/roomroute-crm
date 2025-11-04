@@ -62,16 +62,16 @@ export function ContactCard({
       )}
       <Card className="p-6 hover-elevate">
         <div className="flex items-start justify-between gap-4 mb-4">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-12 w-12">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <Avatar className="h-12 w-12 shrink-0">
               <AvatarImage src={avatarUrl} alt={leadOrProject} />
               <AvatarFallback>{initials}</AvatarFallback>
             </Avatar>
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 overflow-hidden">
               <h3 className="font-semibold truncate" data-testid={`text-lead-name-${leadOrProject.toLowerCase().replace(/\s+/g, '-')}`}>
                 {leadOrProject}
               </h3>
-              <Badge className={`${segmentColors[segment] || segmentColors.Other} text-xs mt-1`}>
+              <Badge className={`${segmentColors[segment] || segmentColors.Other} text-xs mt-1 inline-block`}>
                 {segment}
               </Badge>
             </div>
