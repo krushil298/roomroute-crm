@@ -293,13 +293,18 @@ export default function Settings() {
             type="button"
             variant="outline"
             onClick={() => {
-              console.log("=== FORM DEBUG ===");
-              console.log("Form values:", form.getValues());
-              console.log("Form errors:", form.formState.errors);
-              console.log("Is form valid:", form.formState.isValid);
+              const errors = form.formState.errors;
+              const errorCount = Object.keys(errors).length;
+              if (errorCount > 0) {
+                const errorFields = Object.keys(errors).join(", ");
+                const firstErrorKey = Object.keys(errors)[0] as keyof typeof errors;
+                alert(`Form has ${errorCount} validation error(s) in: ${errorFields}\n\nFirst error: ${JSON.stringify(errors[firstErrorKey], null, 2)}`);
+              } else {
+                alert("Form is valid! All fields passed validation.");
+              }
             }}
           >
-            Debug Form
+            Check Validation
           </Button>
           <Button
             type="submit"
