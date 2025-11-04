@@ -15,6 +15,7 @@ import Pipeline from "@/pages/pipeline";
 import Templates from "@/pages/templates";
 import Calculator from "@/pages/calculator";
 import Import from "@/pages/import";
+import Settings from "@/pages/settings";
 import Landing from "@/pages/landing";
 import Onboarding from "@/pages/onboarding";
 import NotFound from "@/pages/not-found";
@@ -35,6 +36,7 @@ function AuthenticatedRouter() {
       <Route path="/templates" component={Templates} />
       <Route path="/calculator" component={Calculator} />
       <Route path="/import" component={Import} />
+      <Route path="/settings" component={Settings} />
       <Route component={NotFound} />
     </Switch>
   );

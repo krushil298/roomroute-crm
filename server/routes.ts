@@ -48,6 +48,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get organization profile
+  app.get("/api/organization/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.organizationId) {
+        return res.status(403).json({ error: "No organization" });
+      }
+      const org = await storage.getOrganization(user.organizationId);
+      if (!org) {
+        return res.status(404).json({ error: "Organization not found" });
+      }
+      res.json(org);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch organization profile" });
+    }
+  });
+
+  // Update organization profile
+  app.patch("/api/organization/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.organizationId) {
+        return res.status(403).json({ error: "No organization" });
+      }
+      
+      // Allow updating hotel profile fields but not the organization ID or name during setup
+      const { name, numberOfRooms, address, city, state, zipCode, country, contactName, contactPhone, contactEmail, hasMeetingRooms, meetingRoomCapacity, meetingRoomDetails } = req.body;
+      
+      const updatedOrg = await storage.updateOrganization(user.organizationId, {
+        name,
+        numberOfRooms,
+        address,
+        city,
+        state,
+        zipCode,
+        country,
+        contactName,
+        contactPhone,
+        contactEmail,
+        hasMeetingRooms,
+        meetingRoomCapacity,
+        meetingRoomDetails,
+      });
+      
+      if (!updatedOrg) {
+        return res.status(404).json({ error: "Organization not found" });
+      }
+      
+      res.json(updatedOrg);
+    } catch (error) {
+      console.error("Error updating organization:", error);
+      res.status(400).json({ error: "Failed to update organization profile" });
+    }
+  });
+
   // Contact routes
   app.get("/api/contacts", isAuthenticated, async (req: any, res) => {
     try {

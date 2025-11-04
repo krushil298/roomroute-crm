@@ -6,6 +6,7 @@ import {
   Calculator,
   Upload,
   FileText,
+  Settings,
 } from "lucide-react";
 import {
   Sidebar,
@@ -57,6 +58,11 @@ const menuItems = [
     title: "Import Leads",
     url: "/import",
     icon: Upload,
+  },
+  {
+    title: "Settings",
+    url: "/settings",
+    icon: Settings,
   },
 ];
 
