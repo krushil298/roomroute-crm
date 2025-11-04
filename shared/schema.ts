@@ -58,18 +58,24 @@ export const insertOrganizationSchema = createInsertSchema(organizations).omit({
 
 export const updateOrganizationSchema = z.object({
   name: z.string().min(1).optional(),
-  numberOfRooms: z.number().int().positive().nullable().optional(),
-  address: z.string().nullable().optional(),
-  city: z.string().nullable().optional(),
-  state: z.string().nullable().optional(),
-  zipCode: z.string().nullable().optional(),
-  country: z.string().nullable().optional(),
-  contactName: z.string().nullable().optional(),
-  contactPhone: z.string().nullable().optional(),
-  contactEmail: z.string().email().nullable().optional(),
+  numberOfRooms: z.preprocess(
+    (val) => val === "" || val === null || val === undefined ? null : Number(val),
+    z.number().int().positive().nullable().optional()
+  ),
+  address: z.string().optional().or(z.literal("")).nullable(),
+  city: z.string().optional().or(z.literal("")).nullable(),
+  state: z.string().optional().or(z.literal("")).nullable(),
+  zipCode: z.string().optional().or(z.literal("")).nullable(),
+  country: z.string().optional().or(z.literal("")).nullable(),
+  contactName: z.string().optional().or(z.literal("")).nullable(),
+  contactPhone: z.string().optional().or(z.literal("")).nullable(),
+  contactEmail: z.string().email().optional().or(z.literal("")).nullable(),
   hasMeetingRooms: z.boolean().optional(),
-  meetingRoomCapacity: z.number().int().positive().nullable().optional(),
-  meetingRoomDetails: z.string().nullable().optional(),
+  meetingRoomCapacity: z.preprocess(
+    (val) => val === "" || val === null || val === undefined ? null : Number(val),
+    z.number().int().positive().nullable().optional()
+  ),
+  meetingRoomDetails: z.string().optional().or(z.literal("")).nullable(),
 });
 
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
