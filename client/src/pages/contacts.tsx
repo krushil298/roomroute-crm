@@ -59,6 +59,8 @@ const BUSINESS_SEGMENTS = [
 export default function Contacts() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
   const { toast } = useToast();
 
   const { data: contacts = [], isLoading } = useQuery<Contact[]>({
@@ -91,6 +93,7 @@ export default function Contacts() {
         description: "Lead created successfully",
       });
       setIsDialogOpen(false);
+      setSelectedContact(null);
       form.reset();
     },
     onError: (error: Error) => {
@@ -102,8 +105,89 @@ export default function Contacts() {
     },
   });
 
+  const updateContactMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: ClientContact }) => {
+      const response = await apiRequest("PATCH", `/api/contacts/${id}`, data);
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+      toast({
+        title: "Success",
+        description: "Lead updated successfully",
+      });
+      setSelectedContact(null);
+      setIsEditMode(false);
+      form.reset();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update lead",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSubmit = (data: ClientContact) => {
-    createContactMutation.mutate(data);
+    if (isEditMode && selectedContact) {
+      updateContactMutation.mutate({ id: selectedContact.id, data });
+    } else {
+      createContactMutation.mutate(data);
+    }
+  };
+
+  const handleViewContact = (contact: Contact) => {
+    setSelectedContact(contact);
+    setIsEditMode(false);
+    form.reset({
+      leadOrProject: contact.leadOrProject,
+      company: contact.company,
+      segment: contact.segment,
+      primaryContact: contact.primaryContact,
+      email: contact.email,
+      phone: contact.phone,
+      estRoomNights: contact.estRoomNights,
+      avatarUrl: contact.avatarUrl,
+    });
+  };
+
+  const handleEditContact = (contact: Contact) => {
+    setSelectedContact(contact);
+    setIsEditMode(true);
+    form.reset({
+      leadOrProject: contact.leadOrProject,
+      company: contact.company,
+      segment: contact.segment,
+      primaryContact: contact.primaryContact,
+      email: contact.email,
+      phone: contact.phone,
+      estRoomNights: contact.estRoomNights,
+      avatarUrl: contact.avatarUrl,
+    });
+  };
+
+  const handleNewContact = () => {
+    setSelectedContact(null);
+    setIsEditMode(false);
+    setIsDialogOpen(true);
+    form.reset({
+      leadOrProject: "",
+      company: null,
+      segment: "",
+      primaryContact: null,
+      email: null,
+      phone: null,
+      estRoomNights: null,
+      avatarUrl: null,
+    });
+  };
+
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    setSelectedContact(null);
+    setIsEditMode(false);
+    form.reset();
   };
 
   const filteredContacts = contacts.filter((contact) => {
@@ -128,7 +212,7 @@ export default function Contacts() {
         </div>
         <Button
           data-testid="button-add-contact"
-          onClick={() => setIsDialogOpen(true)}
+          onClick={handleNewContact}
         >
           <Plus className="h-4 w-4 mr-2" />
           Add Lead
@@ -165,25 +249,24 @@ export default function Contacts() {
               key={contact.id}
               {...contact}
               avatarUrl={contact.avatarUrl ?? undefined}
-              onEdit={() => {
-                // TODO: Implement edit dialog
-                console.log("Edit", contact.leadOrProject);
-              }}
-              onViewDetails={() => {
-                // TODO: Implement view details dialog or navigate to detail page
-                console.log("View details", contact.leadOrProject);
-              }}
+              onEdit={() => handleEditContact(contact)}
+              onViewDetails={() => handleViewContact(contact)}
             />
           ))}
         </div>
       )}
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={isDialogOpen || selectedContact !== null} onOpenChange={(open) => {
+        if (!open) handleCloseDialog();
+        else setIsDialogOpen(open);
+      }}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Add Lead</DialogTitle>
+            <DialogTitle>
+              {isEditMode ? "Edit Lead" : selectedContact ? "View Lead Details" : "Add Lead"}
+            </DialogTitle>
             <DialogDescription>
-              Create a new lead or project in your CRM
+              {isEditMode ? "Update lead information" : selectedContact ? "View lead details" : "Create a new lead or project in your CRM"}
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>
@@ -199,6 +282,7 @@ export default function Contacts() {
                         placeholder="Bridge rebuild on I-65 W Exit 310-320"
                         {...field}
                         data-testid="input-lead-name"
+                        disabled={selectedContact !== null && !isEditMode}
                       />
                     </FormControl>
                     <FormMessage />
@@ -218,6 +302,7 @@ export default function Contacts() {
                         {...field}
                         list="segment-suggestions"
                         data-testid="input-segment"
+                        disabled={selectedContact !== null && !isEditMode}
                       />
                     </FormControl>
                     <datalist id="segment-suggestions">
@@ -243,6 +328,7 @@ export default function Contacts() {
                         value={field.value || ""}
                         onChange={(e) => field.onChange(e.target.value || null)}
                         data-testid="input-contact-company"
+                        disabled={selectedContact !== null && !isEditMode}
                       />
                     </FormControl>
                     <FormMessage />
@@ -263,6 +349,7 @@ export default function Contacts() {
                         value={field.value || ""}
                         onChange={(e) => field.onChange(e.target.value || null)}
                         data-testid="input-primary-contact"
+                        disabled={selectedContact !== null && !isEditMode}
                       />
                     </FormControl>
                     <FormMessage />
@@ -284,6 +371,7 @@ export default function Contacts() {
                         value={field.value || ""}
                         onChange={(e) => field.onChange(e.target.value || null)}
                         data-testid="input-contact-email"
+                        disabled={selectedContact !== null && !isEditMode}
                       />
                     </FormControl>
                     <FormMessage />
@@ -304,6 +392,7 @@ export default function Contacts() {
                         value={field.value || ""}
                         onChange={(e) => field.onChange(e.target.value || null)}
                         data-testid="input-contact-phone"
+                        disabled={selectedContact !== null && !isEditMode}
                       />
                     </FormControl>
                     <FormMessage />
@@ -328,6 +417,7 @@ export default function Contacts() {
                           field.onChange(val === "" ? null : parseInt(val, 10));
                         }}
                         data-testid="input-est-room-nights"
+                        disabled={selectedContact !== null && !isEditMode}
                       />
                     </FormControl>
                     <FormMessage />
@@ -336,21 +426,37 @@ export default function Contacts() {
               />
 
               <div className="flex justify-end gap-3">
+                {selectedContact && !isEditMode && (
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setIsEditMode(true);
+                    }}
+                    data-testid="button-enable-edit"
+                  >
+                    Edit
+                  </Button>
+                )}
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setIsDialogOpen(false)}
+                  onClick={handleCloseDialog}
                   data-testid="button-cancel-contact"
                 >
-                  Cancel
+                  {selectedContact && !isEditMode ? "Close" : "Cancel"}
                 </Button>
-                <Button
-                  type="submit"
-                  disabled={createContactMutation.isPending}
-                  data-testid="button-submit-contact"
-                >
-                  {createContactMutation.isPending ? "Creating..." : "Create Lead"}
-                </Button>
+                {(!selectedContact || isEditMode) && (
+                  <Button
+                    type="submit"
+                    disabled={createContactMutation.isPending || updateContactMutation.isPending}
+                    data-testid="button-submit-contact"
+                  >
+                    {createContactMutation.isPending || updateContactMutation.isPending 
+                      ? (isEditMode ? "Updating..." : "Creating...") 
+                      : (isEditMode ? "Update Lead" : "Create Lead")
+                    }
+                  </Button>
+                )}
               </div>
             </form>
           </Form>

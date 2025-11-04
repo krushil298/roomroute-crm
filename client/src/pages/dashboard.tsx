@@ -12,7 +12,7 @@ export default function Dashboard() {
   const [, setLocation] = useLocation();
   
   const { data: organization } = useQuery<Organization>({
-    queryKey: ["/api/organization"],
+    queryKey: ["/api/organization/profile"],
   });
 
   const { data: contacts = [] } = useQuery<Contact[]>({
@@ -58,7 +58,7 @@ export default function Dashboard() {
       value: activities.length,
       icon: ActivityIcon,
       trend: { value: 0, isPositive: true },
-      onClick: () => setLocation("/activities"),
+      onClick: undefined,
     },
   ];
 
