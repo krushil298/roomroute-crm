@@ -56,7 +56,24 @@ export const insertOrganizationSchema = createInsertSchema(organizations).omit({
   updatedAt: true,
 });
 
+export const updateOrganizationSchema = z.object({
+  name: z.string().min(1).optional(),
+  numberOfRooms: z.number().int().positive().nullable().optional(),
+  address: z.string().nullable().optional(),
+  city: z.string().nullable().optional(),
+  state: z.string().nullable().optional(),
+  zipCode: z.string().nullable().optional(),
+  country: z.string().nullable().optional(),
+  contactName: z.string().nullable().optional(),
+  contactPhone: z.string().nullable().optional(),
+  contactEmail: z.string().email().nullable().optional(),
+  hasMeetingRooms: z.boolean().optional(),
+  meetingRoomCapacity: z.number().int().positive().nullable().optional(),
+  meetingRoomDetails: z.string().nullable().optional(),
+});
+
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
+export type UpdateOrganization = z.infer<typeof updateOrganizationSchema>;
 export type Organization = typeof organizations.$inferSelect;
 
 export const contacts = pgTable("contacts", {

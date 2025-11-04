@@ -15,7 +15,10 @@ import { Building2, Save } from "lucide-react";
 
 const organizationProfileSchema = z.object({
   name: z.string().min(1, "Hotel name is required"),
-  numberOfRooms: z.number().int().positive().optional().nullable(),
+  numberOfRooms: z.preprocess(
+    (val) => val === "" || val === null || val === undefined ? null : Number(val),
+    z.number().int().positive().nullable().optional()
+  ),
   address: z.string().optional().nullable(),
   city: z.string().optional().nullable(),
   state: z.string().optional().nullable(),
@@ -25,7 +28,10 @@ const organizationProfileSchema = z.object({
   contactPhone: z.string().optional().nullable(),
   contactEmail: z.string().email("Invalid email").optional().or(z.literal("")).nullable(),
   hasMeetingRooms: z.boolean().optional(),
-  meetingRoomCapacity: z.number().int().positive().optional().nullable(),
+  meetingRoomCapacity: z.preprocess(
+    (val) => val === "" || val === null || val === undefined ? null : Number(val),
+    z.number().int().positive().nullable().optional()
+  ),
   meetingRoomDetails: z.string().optional().nullable(),
 });
 
@@ -59,10 +65,7 @@ export default function Settings() {
 
   const updateMutation = useMutation({
     mutationFn: async (data: OrganizationProfile) => {
-      return await apiRequest("/api/organization/profile", {
-        method: "PATCH",
-        body: JSON.stringify(data),
-      });
+      return await apiRequest("PATCH", "/api/organization/profile", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/organization/profile"] });
@@ -81,13 +84,7 @@ export default function Settings() {
   });
 
   const onSubmit = (data: OrganizationProfile) => {
-    // Convert string numbers to actual numbers
-    const formattedData = {
-      ...data,
-      numberOfRooms: data.numberOfRooms ? Number(data.numberOfRooms) : null,
-      meetingRoomCapacity: data.meetingRoomCapacity ? Number(data.meetingRoomCapacity) : null,
-    };
-    updateMutation.mutate(formattedData);
+    updateMutation.mutate(data);
   };
 
   if (isLoading) {
@@ -134,7 +131,7 @@ export default function Settings() {
                 <Input
                   id="numberOfRooms"
                   type="number"
-                  {...form.register("numberOfRooms", { valueAsNumber: true })}
+                  {...form.register("numberOfRooms")}
                   data-testid="input-number-of-rooms"
                 />
               </div>
@@ -264,7 +261,7 @@ export default function Settings() {
                   <Input
                     id="meetingRoomCapacity"
                     type="number"
-                    {...form.register("meetingRoomCapacity", { valueAsNumber: true })}
+                    {...form.register("meetingRoomCapacity")}
                     placeholder="Total people capacity"
                     data-testid="input-meeting-room-capacity"
                   />

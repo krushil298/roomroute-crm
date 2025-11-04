@@ -9,6 +9,7 @@ import {
   insertContractTemplateSchema,
   insertEmailTemplateSchema,
   insertOrganizationSchema,
+  updateOrganizationSchema,
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -75,24 +76,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "No organization" });
       }
       
-      // Allow updating hotel profile fields but not the organization ID or name during setup
-      const { name, numberOfRooms, address, city, state, zipCode, country, contactName, contactPhone, contactEmail, hasMeetingRooms, meetingRoomCapacity, meetingRoomDetails } = req.body;
+      // Validate request body with update organization schema
+      const validated = updateOrganizationSchema.parse(req.body);
       
-      const updatedOrg = await storage.updateOrganization(user.organizationId, {
-        name,
-        numberOfRooms,
-        address,
-        city,
-        state,
-        zipCode,
-        country,
-        contactName,
-        contactPhone,
-        contactEmail,
-        hasMeetingRooms,
-        meetingRoomCapacity,
-        meetingRoomDetails,
-      });
+      const updatedOrg = await storage.updateOrganization(user.organizationId, validated);
       
       if (!updatedOrg) {
         return res.status(404).json({ error: "Organization not found" });
