@@ -103,36 +103,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Test endpoint to verify schema
-  app.get("/api/test/schema", async (req: any, res) => {
-    try {
-      const { db } = await import("./db");
-      const { contacts } = await import("@shared/schema");
-      
-      const testContact = {
-        organizationId: 'test-org-id-123',
-        leadOrProject: 'Test Lead',
-        segment: 'Test Segment',
-        company: null,
-        primaryContact: null,
-        phone: null,
-        email: null,
-        estRoomNights: null,
-        avatarUrl: null,
-      };
-      
-      console.log('Attempting to insert test contact...');
-      const result = await db.insert(contacts).values(testContact).returning();
-      console.log('Insert successful:', result);
-      
-      res.json({ success: true, result });
-    } catch (error: any) {
-      console.error('Test error:', error);
-      console.error('Error stack:', error.stack);
-      res.status(500).json({ error: error.message, stack: error.stack });
-    }
-  });
-
   // Contact routes
   app.get("/api/contacts", isAuthenticated, async (req: any, res) => {
     try {
