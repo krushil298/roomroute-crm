@@ -310,6 +310,12 @@ export default function Settings() {
             type="submit"
             disabled={updateMutation.isPending}
             data-testid="button-save-settings"
+            onClick={(e) => {
+              console.log("Save button clicked!");
+              console.log("Form is valid:", form.formState.isValid);
+              console.log("Form errors:", form.formState.errors);
+              console.log("Mutation pending:", updateMutation.isPending);
+            }}
           >
             <Save className="h-4 w-4 mr-2" />
             {updateMutation.isPending ? "Saving..." : "Save Changes"}
