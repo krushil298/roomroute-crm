@@ -76,8 +76,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "No organization" });
       }
       
+      console.log("Organization update request body:", JSON.stringify(req.body, null, 2));
+      
       // Validate request body with update organization schema
       const validated = updateOrganizationSchema.parse(req.body);
+      
+      console.log("Validated organization data:", JSON.stringify(validated, null, 2));
       
       const updatedOrg = await storage.updateOrganization(user.organizationId, validated);
       
@@ -86,9 +90,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(updatedOrg);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating organization:", error);
-      res.status(400).json({ error: "Failed to update organization profile" });
+      if (error.errors) {
+        console.error("Validation errors:", JSON.stringify(error.errors, null, 2));
+      }
+      const errorMessage = error.errors?.[0]?.message || error.message || "Failed to update organization profile";
+      res.status(400).json({ 
+        error: errorMessage,
+        details: error.errors || undefined
+      });
     }
   });
 
