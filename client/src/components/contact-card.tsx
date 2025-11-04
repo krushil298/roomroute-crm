@@ -1,91 +1,113 @@
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Mail, Phone, Building2, MoreVertical } from "lucide-react";
+import { Mail, Phone, Building2, User, Briefcase, Hotel } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { EmailComposer } from "./email-composer";
 
 interface ContactCardProps {
-  name: string;
-  email: string;
-  phone: string;
-  company: string;
-  status: "new" | "active" | "cold";
+  leadOrProject: string;
+  company: string | null;
+  segment: string;
+  primaryContact: string | null;
+  email: string | null;
+  phone: string | null;
+  estRoomNights: number | null;
   avatarUrl?: string;
   onEdit?: () => void;
   onDelete?: () => void;
 }
 
-const statusColors = {
-  new: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-  active: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-  cold: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400",
+const segmentColors: Record<string, string> = {
+  Corporate: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  SMERF: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
+  Group: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+  Construction: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
+  Government: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+  Other: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400",
 };
 
 export function ContactCard({
-  name,
+  leadOrProject,
+  company,
+  segment,
+  primaryContact,
   email,
   phone,
-  company,
-  status,
+  estRoomNights,
   avatarUrl,
   onEdit,
   onDelete,
 }: ContactCardProps) {
   const [emailComposerOpen, setEmailComposerOpen] = useState(false);
+  
+  const initials = primaryContact 
+    ? primaryContact.split(" ").map((n) => n[0]).join("").toUpperCase()
+    : leadOrProject.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
 
   return (
     <>
-      <EmailComposer
-        open={emailComposerOpen}
-        onOpenChange={setEmailComposerOpen}
-        recipientEmail={email}
-        recipientName={name}
-      />
+      {email && (
+        <EmailComposer
+          open={emailComposerOpen}
+          onOpenChange={setEmailComposerOpen}
+          recipientEmail={email}
+          recipientName={primaryContact || leadOrProject}
+        />
+      )}
       <Card className="p-6 hover-elevate">
         <div className="flex items-start justify-between gap-4 mb-4">
           <div className="flex items-center gap-3">
             <Avatar className="h-12 w-12">
-              <AvatarImage src={avatarUrl} alt={name} />
-              <AvatarFallback>
-                {name
-                  .split(" ")
-                  .map((n) => n[0])
-                  .join("")
-                  .toUpperCase()}
-              </AvatarFallback>
+              <AvatarImage src={avatarUrl} alt={leadOrProject} />
+              <AvatarFallback>{initials}</AvatarFallback>
             </Avatar>
-            <div>
-              <h3 className="font-semibold" data-testid={`text-contact-name-${name.toLowerCase().replace(/\s+/g, '-')}`}>
-                {name}
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold truncate" data-testid={`text-lead-name-${leadOrProject.toLowerCase().replace(/\s+/g, '-')}`}>
+                {leadOrProject}
               </h3>
-              <Badge className={`${statusColors[status]} text-xs mt-1`}>
-                {status}
+              <Badge className={`${segmentColors[segment] || segmentColors.Other} text-xs mt-1`}>
+                {segment}
               </Badge>
             </div>
           </div>
-          <Button variant="ghost" size="icon" data-testid="button-contact-menu">
-            <MoreVertical className="h-4 w-4" />
-          </Button>
         </div>
         <div className="space-y-2">
-          <button
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary w-full text-left hover-elevate rounded-md p-1 -ml-1"
-            onClick={() => setEmailComposerOpen(true)}
-            data-testid="button-email-contact"
-          >
-            <Mail className="h-4 w-4 shrink-0" />
-            <span className="truncate" data-testid="text-contact-email">{email}</span>
-          </button>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Phone className="h-4 w-4 shrink-0" />
-            <span data-testid="text-contact-phone">{phone}</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Building2 className="h-4 w-4 shrink-0" />
-            <span className="truncate" data-testid="text-contact-company">{company}</span>
-          </div>
+          {company && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Building2 className="h-4 w-4 shrink-0" />
+              <span className="truncate" data-testid="text-contact-company">{company}</span>
+            </div>
+          )}
+          {primaryContact && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <User className="h-4 w-4 shrink-0" />
+              <span className="truncate" data-testid="text-primary-contact">{primaryContact}</span>
+            </div>
+          )}
+          {email && (
+            <button
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary w-full text-left hover-elevate rounded-md p-1 -ml-1"
+              onClick={() => setEmailComposerOpen(true)}
+              data-testid="button-email-contact"
+            >
+              <Mail className="h-4 w-4 shrink-0" />
+              <span className="truncate" data-testid="text-contact-email">{email}</span>
+            </button>
+          )}
+          {phone && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Phone className="h-4 w-4 shrink-0" />
+              <span data-testid="text-contact-phone">{phone}</span>
+            </div>
+          )}
+          {estRoomNights !== null && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Hotel className="h-4 w-4 shrink-0" />
+              <span data-testid="text-est-room-nights">{estRoomNights} room nights</span>
+            </div>
+          )}
         </div>
         <div className="flex gap-2 mt-4">
           <Button

@@ -79,21 +79,32 @@ export type Organization = typeof organizations.$inferSelect;
 export const contacts = pgTable("contacts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   organizationId: varchar("organization_id").notNull().references(() => organizations.id),
-  name: text("name").notNull(),
-  email: text("email").notNull(),
-  phone: text("phone").notNull(),
-  company: text("company").notNull(),
-  status: text("status").notNull().default("new"),
+  leadOrProject: text("lead_or_project").notNull(),
+  company: text("company"),
+  segment: text("segment").notNull(),
+  primaryContact: text("primary_contact"),
+  phone: text("phone"),
+  email: text("email"),
+  estRoomNights: integer("est_room_nights"),
   avatarUrl: text("avatar_url"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Client schema - used by frontend (organizationId omitted for security)
 export const insertContactSchema = createInsertSchema(contacts).omit({
+  id: true,
+  createdAt: true,
+  organizationId: true,
+});
+
+// Server schema - includes organizationId for database insertion
+const insertContactSchemaWithOrg = createInsertSchema(contacts).omit({
   id: true,
   createdAt: true,
 });
 
-export type InsertContact = z.infer<typeof insertContactSchema>;
+export type InsertContact = z.infer<typeof insertContactSchemaWithOrg>;
+export type ClientInsertContact = z.infer<typeof insertContactSchema>;
 export type Contact = typeof contacts.$inferSelect;
 
 export const deals = pgTable("deals", {

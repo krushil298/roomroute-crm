@@ -30,13 +30,31 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertContactSchema } from "@shared/schema";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
 // Frontend contact schema without organizationId (security: prevent client from sending orgId)
-const clientContactSchema = insertContactSchema.omit({ organizationId: true });
+const clientContactSchema = z.object({
+  leadOrProject: z.string().min(1, "Lead or project name is required"),
+  company: z.string().nullable(),
+  segment: z.string().min(1, "Segment is required"),
+  primaryContact: z.string().nullable(),
+  email: z.string().email().nullable().or(z.literal("")),
+  phone: z.string().nullable(),
+  estRoomNights: z.number().int().positive().nullable(),
+  avatarUrl: z.string().nullable(),
+});
 type ClientContact = z.infer<typeof clientContactSchema>;
+
+const BUSINESS_SEGMENTS = [
+  "Corporate",
+  "SMERF",
+  "Group",
+  "Construction",
+  "Government",
+  "Other"
+] as const;
 
 export default function Contacts() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -50,42 +68,27 @@ export default function Contacts() {
   const form = useForm<ClientContact>({
     resolver: zodResolver(clientContactSchema),
     defaultValues: {
-      name: "",
-      email: "",
-      phone: "",
-      company: "",
-      status: "new",
+      leadOrProject: "",
+      company: null,
+      segment: "Other",
+      primaryContact: null,
+      email: null,
+      phone: null,
+      estRoomNights: null,
       avatarUrl: null,
     },
   });
 
   const createContactMutation = useMutation({
     mutationFn: async (data: ClientContact) => {
-      // Explicitly send only the fields we intend (no organizationId)
-      const payload = {
-        name: data.name,
-        email: data.email,
-        phone: data.phone,
-        company: data.company,
-        status: data.status,
-        avatarUrl: data.avatarUrl,
-      };
-      const response = await fetch("/api/contacts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to create contact");
-      }
+      const response = await apiRequest("POST", "/api/contacts", data);
       return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
       toast({
         title: "Success",
-        description: "Contact created successfully",
+        description: "Lead created successfully",
       });
       setIsDialogOpen(false);
       form.reset();
@@ -93,7 +96,7 @@ export default function Contacts() {
     onError: (error: Error) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to create contact",
+        description: error.message || "Failed to create lead",
         variant: "destructive",
       });
     },
@@ -103,19 +106,24 @@ export default function Contacts() {
     createContactMutation.mutate(data);
   };
 
-  const filteredContacts = contacts.filter((contact) =>
-    contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    contact.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    contact.company.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredContacts = contacts.filter((contact) => {
+    const search = searchQuery.toLowerCase();
+    return (
+      contact.leadOrProject.toLowerCase().includes(search) ||
+      (contact.company && contact.company.toLowerCase().includes(search)) ||
+      (contact.primaryContact && contact.primaryContact.toLowerCase().includes(search)) ||
+      (contact.email && contact.email.toLowerCase().includes(search)) ||
+      contact.segment.toLowerCase().includes(search)
+    );
+  });
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold mb-1">Contacts</h1>
+          <h1 className="text-2xl font-semibold mb-1">Leads & Contacts</h1>
           <p className="text-sm text-muted-foreground">
-            Manage your customer relationships
+            Track your opportunities and customer relationships
           </p>
         </div>
         <Button
@@ -123,14 +131,14 @@ export default function Contacts() {
           onClick={() => setIsDialogOpen(true)}
         >
           <Plus className="h-4 w-4 mr-2" />
-          Add Contact
+          Add Lead
         </Button>
       </div>
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Search contacts..."
+          placeholder="Search leads..."
           className="pl-9"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -147,7 +155,7 @@ export default function Contacts() {
       ) : filteredContacts.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-muted-foreground">
-            {searchQuery ? "No contacts found" : "No contacts yet. Add your first contact!"}
+            {searchQuery ? "No leads found" : "No leads yet. Add your first lead!"}
           </p>
         </div>
       ) : (
@@ -157,75 +165,68 @@ export default function Contacts() {
               key={contact.id}
               {...contact}
               avatarUrl={contact.avatarUrl ?? undefined}
-              status={contact.status as "new" | "active" | "cold"}
-              onEdit={() => console.log("Edit", contact.name)}
+              onEdit={() => console.log("Edit", contact.leadOrProject)}
             />
           ))}
         </div>
       )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Add Contact</DialogTitle>
+            <DialogTitle>Add Lead</DialogTitle>
             <DialogDescription>
-              Create a new contact in your CRM
+              Create a new lead or project in your CRM
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
               <FormField
                 control={form.control}
-                name="name"
+                name="leadOrProject"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Name</FormLabel>
+                    <FormLabel>Lead or Project Name *</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="John Doe"
+                        placeholder="Bridge rebuild on I-65 W Exit 310-320"
                         {...field}
-                        data-testid="input-contact-name"
+                        data-testid="input-lead-name"
                       />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+              
               <FormField
                 control={form.control}
-                name="email"
+                name="segment"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="email"
-                        placeholder="john@example.com"
-                        {...field}
-                        data-testid="input-contact-email"
-                      />
-                    </FormControl>
+                    <FormLabel>Business Segment *</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger data-testid="select-segment">
+                          <SelectValue placeholder="Select segment" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {BUSINESS_SEGMENTS.map((segment) => (
+                          <SelectItem key={segment} value={segment}>
+                            {segment}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Phone</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="555-0123"
-                        {...field}
-                        data-testid="input-contact-phone"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+
               <FormField
                 control={form.control}
                 name="company"
@@ -236,6 +237,8 @@ export default function Contacts() {
                       <Input
                         placeholder="Acme Corp"
                         {...field}
+                        value={field.value || ""}
+                        onChange={(e) => field.onChange(e.target.value || null)}
                         data-testid="input-contact-company"
                       />
                     </FormControl>
@@ -243,34 +246,92 @@ export default function Contacts() {
                   </FormItem>
                 )}
               />
+
               <FormField
                 control={form.control}
-                name="status"
+                name="primaryContact"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger data-testid="select-contact-status">
-                          <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="new">New</SelectItem>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="inactive">Inactive</SelectItem>
-                        <SelectItem value="hot">Hot</SelectItem>
-                        <SelectItem value="warm">Warm</SelectItem>
-                        <SelectItem value="cold">Cold</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <FormLabel>Primary Contact</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="John Doe"
+                        {...field}
+                        value={field.value || ""}
+                        onChange={(e) => field.onChange(e.target.value || null)}
+                        data-testid="input-primary-contact"
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Contact Email</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="email"
+                        placeholder="john@example.com"
+                        {...field}
+                        value={field.value || ""}
+                        onChange={(e) => field.onChange(e.target.value || null)}
+                        data-testid="input-contact-email"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Contact Phone</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="555-0123"
+                        {...field}
+                        value={field.value || ""}
+                        onChange={(e) => field.onChange(e.target.value || null)}
+                        data-testid="input-contact-phone"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="estRoomNights"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Estimated Room Nights</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="50"
+                        {...field}
+                        value={field.value ?? ""}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          field.onChange(val === "" ? null : parseInt(val, 10));
+                        }}
+                        data-testid="input-est-room-nights"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <div className="flex justify-end gap-3">
                 <Button
                   type="button"
@@ -285,7 +346,7 @@ export default function Contacts() {
                   disabled={createContactMutation.isPending}
                   data-testid="button-submit-contact"
                 >
-                  {createContactMutation.isPending ? "Creating..." : "Create Contact"}
+                  {createContactMutation.isPending ? "Creating..." : "Create Lead"}
                 </Button>
               </div>
             </form>
