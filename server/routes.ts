@@ -201,6 +201,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!Array.isArray(contacts)) {
         return res.status(400).json({ error: "Contacts must be an array" });
       }
+      
+      console.log(`Importing ${contacts.length} contacts`);
+      console.log('Sample contact:', JSON.stringify(contacts[0], null, 2));
+      
       const validated = contacts.map((c, index) => {
         try {
           const parsed = insertContactSchema.parse(c);
@@ -214,10 +218,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           throw new Error(`Row ${index + 1}: ${validationError.message || validationError.errors?.[0]?.message || 'Invalid data'}`);
         }
       });
+      
+      console.log('Validated contacts (first one):', JSON.stringify(validated[0], null, 2));
+      
       const imported = await storage.importContacts(validated);
       res.status(201).json(imported);
     } catch (error: any) {
       console.error('Import error:', error);
+      console.error('Error stack:', error.stack);
       res.status(400).json({ 
         error: error.message || "Invalid contact data",
         details: error.errors || undefined
