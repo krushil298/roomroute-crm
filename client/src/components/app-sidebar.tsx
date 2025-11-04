@@ -7,6 +7,7 @@ import {
   Upload,
   Settings,
   UserCircle,
+  FileText,
 } from "lucide-react";
 import {
   Sidebar,
@@ -43,6 +44,11 @@ const menuItems = [
     title: "Pipeline",
     url: "/pipeline",
     icon: Activity,
+  },
+  {
+    title: "Templates",
+    url: "/templates",
+    icon: FileText,
   },
   {
     title: "Calculator",

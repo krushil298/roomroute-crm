@@ -11,6 +11,7 @@ import Dashboard from "@/pages/dashboard";
 import Contacts from "@/pages/contacts";
 import Deals from "@/pages/deals";
 import Pipeline from "@/pages/pipeline";
+import Templates from "@/pages/templates";
 import Calculator from "@/pages/calculator";
 import Import from "@/pages/import";
 import NotFound from "@/pages/not-found";
@@ -22,6 +23,7 @@ function Router() {
       <Route path="/contacts" component={Contacts} />
       <Route path="/deals" component={Deals} />
       <Route path="/pipeline" component={Pipeline} />
+      <Route path="/templates" component={Templates} />
       <Route path="/calculator" component={Calculator} />
       <Route path="/import" component={Import} />
       <Route component={NotFound} />
