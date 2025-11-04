@@ -13,9 +13,12 @@ export default function Landing() {
         <div className="max-w-6xl mx-auto">
           {/* Hero Section */}
           <div className="text-center mb-16">
-            <h1 className="text-5xl font-bold mb-4" data-testid="text-title">
+            <h1 className="text-5xl font-bold mb-2" data-testid="text-title">
               RoomRoute
             </h1>
+            <p className="text-lg text-muted-foreground mb-8 italic" data-testid="text-tagline">
+              Your Route to Room Nights
+            </p>
             <p className="text-xl text-muted-foreground mb-8" data-testid="text-subtitle">
               Hotel CRM built for the hospitality industry
             </p>
