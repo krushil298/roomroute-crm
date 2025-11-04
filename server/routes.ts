@@ -1,27 +1,76 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { setupAuth, isAuthenticated } from "./replitAuth";
 import {
   insertContactSchema,
   insertDealSchema,
   insertActivitySchema,
   insertContractTemplateSchema,
   insertEmailTemplateSchema,
+  insertOrganizationSchema,
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  app.get("/api/contacts", async (_req, res) => {
+  // Setup authentication
+  await setupAuth(app);
+
+  // Auth routes
+  app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
     try {
-      const contacts = await storage.getAllContacts();
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Organization onboarding endpoint
+  app.post("/api/organizations", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (user?.organizationId) {
+        return res.status(400).json({ error: "User already has an organization" });
+      }
+
+      const validated = insertOrganizationSchema.parse(req.body);
+      const org = await storage.createOrganization(validated);
+      await storage.updateUserOrganization(userId, org.id);
+      
+      res.status(201).json(org);
+    } catch (error) {
+      console.error("Error creating organization:", error);
+      res.status(400).json({ error: "Failed to create organization" });
+    }
+  });
+
+  // Contact routes
+  app.get("/api/contacts", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.organizationId) {
+        return res.status(403).json({ error: "No organization" });
+      }
+      const contacts = await storage.getAllContacts(user.organizationId);
       res.json(contacts);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch contacts" });
     }
   });
 
-  app.get("/api/contacts/:id", async (req, res) => {
+  app.get("/api/contacts/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const contact = await storage.getContact(req.params.id);
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.organizationId) {
+        return res.status(403).json({ error: "No organization" });
+      }
+      const contact = await storage.getContact(req.params.id, user.organizationId);
       if (!contact) {
         return res.status(404).json({ error: "Contact not found" });
       }
@@ -31,19 +80,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/contacts", async (req, res) => {
+  app.post("/api/contacts", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.organizationId) {
+        return res.status(403).json({ error: "No organization" });
+      }
       const validated = insertContactSchema.parse(req.body);
-      const contact = await storage.createContact(validated);
+      const contact = await storage.createContact({
+        ...validated,
+        organizationId: user.organizationId,
+      });
       res.status(201).json(contact);
     } catch (error) {
       res.status(400).json({ error: "Invalid contact data" });
     }
   });
 
-  app.patch("/api/contacts/:id", async (req, res) => {
+  app.patch("/api/contacts/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const contact = await storage.updateContact(req.params.id, req.body);
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.organizationId) {
+        return res.status(403).json({ error: "No organization" });
+      }
+      const contact = await storage.updateContact(req.params.id, user.organizationId, req.body);
       if (!contact) {
         return res.status(404).json({ error: "Contact not found" });
       }
@@ -53,22 +115,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/contacts/:id", async (req, res) => {
+  app.delete("/api/contacts/:id", isAuthenticated, async (req: any, res) => {
     try {
-      await storage.deleteContact(req.params.id);
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.organizationId) {
+        return res.status(403).json({ error: "No organization" });
+      }
+      await storage.deleteContact(req.params.id, user.organizationId);
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to delete contact" });
     }
   });
 
-  app.post("/api/contacts/import", async (req, res) => {
+  app.post("/api/contacts/import", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.organizationId) {
+        return res.status(403).json({ error: "No organization" });
+      }
       const { contacts } = req.body;
       if (!Array.isArray(contacts)) {
         return res.status(400).json({ error: "Contacts must be an array" });
       }
-      const validated = contacts.map(c => insertContactSchema.parse(c));
+      const validated = contacts.map(c => {
+        const parsed = insertContactSchema.parse(c);
+        return {
+          ...parsed,
+          organizationId: user.organizationId!,
+        };
+      });
       const imported = await storage.importContacts(validated);
       res.status(201).json(imported);
     } catch (error) {
@@ -76,18 +154,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/deals", async (_req, res) => {
+  // Deal routes
+  app.get("/api/deals", isAuthenticated, async (req: any, res) => {
     try {
-      const deals = await storage.getAllDeals();
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.organizationId) {
+        return res.status(403).json({ error: "No organization" });
+      }
+      const deals = await storage.getAllDeals(user.organizationId);
       res.json(deals);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch deals" });
     }
   });
 
-  app.get("/api/deals/:id", async (req, res) => {
+  app.get("/api/deals/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const deal = await storage.getDeal(req.params.id);
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.organizationId) {
+        return res.status(403).json({ error: "No organization" });
+      }
+      const deal = await storage.getDeal(req.params.id, user.organizationId);
       if (!deal) {
         return res.status(404).json({ error: "Deal not found" });
       }
@@ -97,28 +186,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/contacts/:contactId/deals", async (req, res) => {
+  app.get("/api/contacts/:contactId/deals", isAuthenticated, async (req: any, res) => {
     try {
-      const deals = await storage.getDealsByContact(req.params.contactId);
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.organizationId) {
+        return res.status(403).json({ error: "No organization" });
+      }
+      const deals = await storage.getDealsByContact(req.params.contactId, user.organizationId);
       res.json(deals);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch deals" });
     }
   });
 
-  app.post("/api/deals", async (req, res) => {
+  app.post("/api/deals", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.organizationId) {
+        return res.status(403).json({ error: "No organization" });
+      }
       const validated = insertDealSchema.parse(req.body);
-      const deal = await storage.createDeal(validated);
+      const deal = await storage.createDeal({
+        ...validated,
+        organizationId: user.organizationId,
+      });
       res.status(201).json(deal);
     } catch (error) {
       res.status(400).json({ error: "Invalid deal data" });
     }
   });
 
-  app.patch("/api/deals/:id", async (req, res) => {
+  app.patch("/api/deals/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const deal = await storage.updateDeal(req.params.id, req.body);
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.organizationId) {
+        return res.status(403).json({ error: "No organization" });
+      }
+      const deal = await storage.updateDeal(req.params.id, user.organizationId, req.body);
       if (!deal) {
         return res.status(404).json({ error: "Deal not found" });
       }
@@ -128,64 +235,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/deals/:id", async (req, res) => {
+  app.delete("/api/deals/:id", isAuthenticated, async (req: any, res) => {
     try {
-      await storage.deleteDeal(req.params.id);
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.organizationId) {
+        return res.status(403).json({ error: "No organization" });
+      }
+      await storage.deleteDeal(req.params.id, user.organizationId);
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to delete deal" });
     }
   });
 
-  app.get("/api/activities", async (_req, res) => {
+  // Activity routes
+  app.get("/api/activities", isAuthenticated, async (req: any, res) => {
     try {
-      const activities = await storage.getAllActivities();
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.organizationId) {
+        return res.status(403).json({ error: "No organization" });
+      }
+      const activities = await storage.getAllActivities(user.organizationId);
       res.json(activities);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch activities" });
     }
   });
 
-  app.get("/api/contacts/:contactId/activities", async (req, res) => {
+  app.get("/api/contacts/:contactId/activities", isAuthenticated, async (req: any, res) => {
     try {
-      const activities = await storage.getActivitiesByContact(req.params.contactId);
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.organizationId) {
+        return res.status(403).json({ error: "No organization" });
+      }
+      const activities = await storage.getActivitiesByContact(req.params.contactId, user.organizationId);
       res.json(activities);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch activities" });
     }
   });
 
-  app.get("/api/deals/:dealId/activities", async (req, res) => {
+  app.get("/api/deals/:dealId/activities", isAuthenticated, async (req: any, res) => {
     try {
-      const activities = await storage.getActivitiesByDeal(req.params.dealId);
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.organizationId) {
+        return res.status(403).json({ error: "No organization" });
+      }
+      const activities = await storage.getActivitiesByDeal(req.params.dealId, user.organizationId);
       res.json(activities);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch activities" });
     }
   });
 
-  app.post("/api/activities", async (req, res) => {
+  app.post("/api/activities", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.organizationId) {
+        return res.status(403).json({ error: "No organization" });
+      }
       const validated = insertActivitySchema.parse(req.body);
-      const activity = await storage.createActivity(validated);
+      const activity = await storage.createActivity({
+        ...validated,
+        organizationId: user.organizationId,
+      });
       res.status(201).json(activity);
     } catch (error) {
       res.status(400).json({ error: "Invalid activity data" });
     }
   });
 
-  app.get("/api/contract-templates", async (_req, res) => {
+  // Contract template routes
+  app.get("/api/contract-templates", isAuthenticated, async (req: any, res) => {
     try {
-      const templates = await storage.getAllContractTemplates();
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.organizationId) {
+        return res.status(403).json({ error: "No organization" });
+      }
+      const templates = await storage.getAllContractTemplates(user.organizationId);
       res.json(templates);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch contract templates" });
     }
   });
 
-  app.get("/api/contract-templates/:id", async (req, res) => {
+  app.get("/api/contract-templates/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const template = await storage.getContractTemplate(req.params.id);
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.organizationId) {
+        return res.status(403).json({ error: "No organization" });
+      }
+      const template = await storage.getContractTemplate(req.params.id, user.organizationId);
       if (!template) {
         return res.status(404).json({ error: "Template not found" });
       }
@@ -195,28 +342,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/contract-templates/type/:type", async (req, res) => {
+  app.get("/api/contract-templates/type/:type", isAuthenticated, async (req: any, res) => {
     try {
-      const templates = await storage.getContractTemplatesByType(req.params.type);
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.organizationId) {
+        return res.status(403).json({ error: "No organization" });
+      }
+      const templates = await storage.getContractTemplatesByType(req.params.type, user.organizationId);
       res.json(templates);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch templates" });
     }
   });
 
-  app.post("/api/contract-templates", async (req, res) => {
+  app.post("/api/contract-templates", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.organizationId) {
+        return res.status(403).json({ error: "No organization" });
+      }
       const validated = insertContractTemplateSchema.parse(req.body);
-      const template = await storage.createContractTemplate(validated);
+      const template = await storage.createContractTemplate({
+        ...validated,
+        organizationId: user.organizationId,
+      });
       res.status(201).json(template);
     } catch (error) {
       res.status(400).json({ error: "Invalid template data" });
     }
   });
 
-  app.patch("/api/contract-templates/:id", async (req, res) => {
+  app.patch("/api/contract-templates/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const template = await storage.updateContractTemplate(req.params.id, req.body);
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.organizationId) {
+        return res.status(403).json({ error: "No organization" });
+      }
+      const template = await storage.updateContractTemplate(req.params.id, user.organizationId, req.body);
       if (!template) {
         return res.status(404).json({ error: "Template not found" });
       }
@@ -226,27 +391,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/contract-templates/:id", async (req, res) => {
+  app.delete("/api/contract-templates/:id", isAuthenticated, async (req: any, res) => {
     try {
-      await storage.deleteContractTemplate(req.params.id);
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.organizationId) {
+        return res.status(403).json({ error: "No organization" });
+      }
+      await storage.deleteContractTemplate(req.params.id, user.organizationId);
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to delete template" });
     }
   });
 
-  app.get("/api/email-templates", async (_req, res) => {
+  // Email template routes
+  app.get("/api/email-templates", isAuthenticated, async (req: any, res) => {
     try {
-      const templates = await storage.getAllEmailTemplates();
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.organizationId) {
+        return res.status(403).json({ error: "No organization" });
+      }
+      const templates = await storage.getAllEmailTemplates(user.organizationId);
       res.json(templates);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch email templates" });
     }
   });
 
-  app.get("/api/email-templates/:id", async (req, res) => {
+  app.get("/api/email-templates/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const template = await storage.getEmailTemplate(req.params.id);
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.organizationId) {
+        return res.status(403).json({ error: "No organization" });
+      }
+      const template = await storage.getEmailTemplate(req.params.id, user.organizationId);
       if (!template) {
         return res.status(404).json({ error: "Template not found" });
       }
@@ -256,19 +437,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/email-templates", async (req, res) => {
+  app.post("/api/email-templates", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.organizationId) {
+        return res.status(403).json({ error: "No organization" });
+      }
       const validated = insertEmailTemplateSchema.parse(req.body);
-      const template = await storage.createEmailTemplate(validated);
+      const template = await storage.createEmailTemplate({
+        ...validated,
+        organizationId: user.organizationId,
+      });
       res.status(201).json(template);
     } catch (error) {
       res.status(400).json({ error: "Invalid template data" });
     }
   });
 
-  app.patch("/api/email-templates/:id", async (req, res) => {
+  app.patch("/api/email-templates/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const template = await storage.updateEmailTemplate(req.params.id, req.body);
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.organizationId) {
+        return res.status(403).json({ error: "No organization" });
+      }
+      const template = await storage.updateEmailTemplate(req.params.id, user.organizationId, req.body);
       if (!template) {
         return res.status(404).json({ error: "Template not found" });
       }
@@ -278,16 +472,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/email-templates/:id", async (req, res) => {
+  app.delete("/api/email-templates/:id", isAuthenticated, async (req: any, res) => {
     try {
-      await storage.deleteEmailTemplate(req.params.id);
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.organizationId) {
+        return res.status(403).json({ error: "No organization" });
+      }
+      await storage.deleteEmailTemplate(req.params.id, user.organizationId);
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to delete template" });
     }
   });
 
-  app.post("/api/send-email", async (req, res) => {
+  // Email sending route
+  app.post("/api/send-email", isAuthenticated, async (req: any, res) => {
     try {
       const { to, subject, body } = req.body;
       if (!to || !subject || !body) {

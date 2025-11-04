@@ -1,6 +1,6 @@
 import {
   type User,
-  type InsertUser,
+  type UpsertUser,
   type Contact,
   type InsertContact,
   type Deal,
@@ -11,80 +11,117 @@ import {
   type InsertContractTemplate,
   type EmailTemplate,
   type InsertEmailTemplate,
+  type Organization,
+  type InsertOrganization,
   users,
   contacts,
   deals,
   activities,
   contractTemplates,
   emailTemplates,
+  organizations,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 export interface IStorage {
+  // User operations (required for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  upsertUser(user: UpsertUser): Promise<User>;
   
-  getAllContacts(): Promise<Contact[]>;
-  getContact(id: string): Promise<Contact | undefined>;
+  // Organization operations
+  getOrganization(id: string): Promise<Organization | undefined>;
+  createOrganization(org: InsertOrganization): Promise<Organization>;
+  updateUserOrganization(userId: string, organizationId: string): Promise<User | undefined>;
+  
+  // Contact operations (filtered by organization)
+  getAllContacts(organizationId: string): Promise<Contact[]>;
+  getContact(id: string, organizationId: string): Promise<Contact | undefined>;
   createContact(contact: InsertContact): Promise<Contact>;
-  updateContact(id: string, contact: Partial<InsertContact>): Promise<Contact | undefined>;
-  deleteContact(id: string): Promise<void>;
+  updateContact(id: string, organizationId: string, contact: Partial<InsertContact>): Promise<Contact | undefined>;
+  deleteContact(id: string, organizationId: string): Promise<void>;
   importContacts(contacts: InsertContact[]): Promise<Contact[]>;
   
-  getAllDeals(): Promise<Deal[]>;
-  getDeal(id: string): Promise<Deal | undefined>;
-  getDealsByContact(contactId: string): Promise<Deal[]>;
+  // Deal operations (filtered by organization)
+  getAllDeals(organizationId: string): Promise<Deal[]>;
+  getDeal(id: string, organizationId: string): Promise<Deal | undefined>;
+  getDealsByContact(contactId: string, organizationId: string): Promise<Deal[]>;
   createDeal(deal: InsertDeal): Promise<Deal>;
-  updateDeal(id: string, deal: Partial<InsertDeal>): Promise<Deal | undefined>;
-  deleteDeal(id: string): Promise<void>;
+  updateDeal(id: string, organizationId: string, deal: Partial<InsertDeal>): Promise<Deal | undefined>;
+  deleteDeal(id: string, organizationId: string): Promise<void>;
   
-  getAllActivities(): Promise<Activity[]>;
-  getActivitiesByContact(contactId: string): Promise<Activity[]>;
-  getActivitiesByDeal(dealId: string): Promise<Activity[]>;
+  // Activity operations (filtered by organization)
+  getAllActivities(organizationId: string): Promise<Activity[]>;
+  getActivitiesByContact(contactId: string, organizationId: string): Promise<Activity[]>;
+  getActivitiesByDeal(dealId: string, organizationId: string): Promise<Activity[]>;
   createActivity(activity: InsertActivity): Promise<Activity>;
   
-  getAllContractTemplates(): Promise<ContractTemplate[]>;
-  getContractTemplate(id: string): Promise<ContractTemplate | undefined>;
-  getContractTemplatesByType(type: string): Promise<ContractTemplate[]>;
+  // Template operations (filtered by organization)
+  getAllContractTemplates(organizationId: string): Promise<ContractTemplate[]>;
+  getContractTemplate(id: string, organizationId: string): Promise<ContractTemplate | undefined>;
+  getContractTemplatesByType(type: string, organizationId: string): Promise<ContractTemplate[]>;
   createContractTemplate(template: InsertContractTemplate): Promise<ContractTemplate>;
-  updateContractTemplate(id: string, template: Partial<InsertContractTemplate>): Promise<ContractTemplate | undefined>;
-  deleteContractTemplate(id: string): Promise<void>;
+  updateContractTemplate(id: string, organizationId: string, template: Partial<InsertContractTemplate>): Promise<ContractTemplate | undefined>;
+  deleteContractTemplate(id: string, organizationId: string): Promise<void>;
   
-  getAllEmailTemplates(): Promise<EmailTemplate[]>;
-  getEmailTemplate(id: string): Promise<EmailTemplate | undefined>;
+  getAllEmailTemplates(organizationId: string): Promise<EmailTemplate[]>;
+  getEmailTemplate(id: string, organizationId: string): Promise<EmailTemplate | undefined>;
   createEmailTemplate(template: InsertEmailTemplate): Promise<EmailTemplate>;
-  updateEmailTemplate(id: string, template: Partial<InsertEmailTemplate>): Promise<EmailTemplate | undefined>;
-  deleteEmailTemplate(id: string): Promise<void>;
+  updateEmailTemplate(id: string, organizationId: string, template: Partial<InsertEmailTemplate>): Promise<EmailTemplate | undefined>;
+  deleteEmailTemplate(id: string, organizationId: string): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
+  // User operations (required for Replit Auth)
   async getUser(id: string): Promise<User | undefined> {
-    const result = await db.query.users.findFirst({
-      where: (users, { eq }) => eq(users.id, id),
-    });
-    return result;
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    const result = await db.query.users.findFirst({
-      where: (users, { eq }) => eq(users.username, username),
-    });
-    return result;
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return user;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db.insert(users).values(insertUser).returning();
+  // Organization operations
+  async getOrganization(id: string): Promise<Organization | undefined> {
+    const [org] = await db.select().from(organizations).where(eq(organizations.id, id));
+    return org;
+  }
+
+  async createOrganization(orgData: InsertOrganization): Promise<Organization> {
+    const [org] = await db.insert(organizations).values(orgData).returning();
+    return org;
+  }
+
+  async updateUserOrganization(userId: string, organizationId: string): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({ organizationId, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
     return user;
   }
   
-  async getAllContacts(): Promise<Contact[]> {
-    return await db.select().from(contacts);
+  // Contact operations
+  async getAllContacts(organizationId: string): Promise<Contact[]> {
+    return await db.select().from(contacts).where(eq(contacts.organizationId, organizationId));
   }
   
-  async getContact(id: string): Promise<Contact | undefined> {
-    const [contact] = await db.select().from(contacts).where(eq(contacts.id, id));
+  async getContact(id: string, organizationId: string): Promise<Contact | undefined> {
+    const [contact] = await db.select().from(contacts).where(
+      and(eq(contacts.id, id), eq(contacts.organizationId, organizationId))
+    );
     return contact;
   }
   
@@ -93,13 +130,17 @@ export class DbStorage implements IStorage {
     return newContact;
   }
   
-  async updateContact(id: string, contact: Partial<InsertContact>): Promise<Contact | undefined> {
-    const [updated] = await db.update(contacts).set(contact).where(eq(contacts.id, id)).returning();
+  async updateContact(id: string, organizationId: string, contact: Partial<InsertContact>): Promise<Contact | undefined> {
+    const [updated] = await db.update(contacts).set(contact).where(
+      and(eq(contacts.id, id), eq(contacts.organizationId, organizationId))
+    ).returning();
     return updated;
   }
   
-  async deleteContact(id: string): Promise<void> {
-    await db.delete(contacts).where(eq(contacts.id, id));
+  async deleteContact(id: string, organizationId: string): Promise<void> {
+    await db.delete(contacts).where(
+      and(eq(contacts.id, id), eq(contacts.organizationId, organizationId))
+    );
   }
   
   async importContacts(contactsList: InsertContact[]): Promise<Contact[]> {
@@ -107,17 +148,22 @@ export class DbStorage implements IStorage {
     return await db.insert(contacts).values(contactsList).returning();
   }
   
-  async getAllDeals(): Promise<Deal[]> {
-    return await db.select().from(deals);
+  // Deal operations
+  async getAllDeals(organizationId: string): Promise<Deal[]> {
+    return await db.select().from(deals).where(eq(deals.organizationId, organizationId));
   }
   
-  async getDeal(id: string): Promise<Deal | undefined> {
-    const [deal] = await db.select().from(deals).where(eq(deals.id, id));
+  async getDeal(id: string, organizationId: string): Promise<Deal | undefined> {
+    const [deal] = await db.select().from(deals).where(
+      and(eq(deals.id, id), eq(deals.organizationId, organizationId))
+    );
     return deal;
   }
   
-  async getDealsByContact(contactId: string): Promise<Deal[]> {
-    return await db.select().from(deals).where(eq(deals.contactId, contactId));
+  async getDealsByContact(contactId: string, organizationId: string): Promise<Deal[]> {
+    return await db.select().from(deals).where(
+      and(eq(deals.contactId, contactId), eq(deals.organizationId, organizationId))
+    );
   }
   
   async createDeal(deal: InsertDeal): Promise<Deal> {
@@ -125,25 +171,34 @@ export class DbStorage implements IStorage {
     return newDeal;
   }
   
-  async updateDeal(id: string, deal: Partial<InsertDeal>): Promise<Deal | undefined> {
-    const [updated] = await db.update(deals).set(deal).where(eq(deals.id, id)).returning();
+  async updateDeal(id: string, organizationId: string, deal: Partial<InsertDeal>): Promise<Deal | undefined> {
+    const [updated] = await db.update(deals).set(deal).where(
+      and(eq(deals.id, id), eq(deals.organizationId, organizationId))
+    ).returning();
     return updated;
   }
   
-  async deleteDeal(id: string): Promise<void> {
-    await db.delete(deals).where(eq(deals.id, id));
+  async deleteDeal(id: string, organizationId: string): Promise<void> {
+    await db.delete(deals).where(
+      and(eq(deals.id, id), eq(deals.organizationId, organizationId))
+    );
   }
   
-  async getAllActivities(): Promise<Activity[]> {
-    return await db.select().from(activities);
+  // Activity operations
+  async getAllActivities(organizationId: string): Promise<Activity[]> {
+    return await db.select().from(activities).where(eq(activities.organizationId, organizationId));
   }
   
-  async getActivitiesByContact(contactId: string): Promise<Activity[]> {
-    return await db.select().from(activities).where(eq(activities.contactId, contactId));
+  async getActivitiesByContact(contactId: string, organizationId: string): Promise<Activity[]> {
+    return await db.select().from(activities).where(
+      and(eq(activities.contactId, contactId), eq(activities.organizationId, organizationId))
+    );
   }
   
-  async getActivitiesByDeal(dealId: string): Promise<Activity[]> {
-    return await db.select().from(activities).where(eq(activities.dealId, dealId));
+  async getActivitiesByDeal(dealId: string, organizationId: string): Promise<Activity[]> {
+    return await db.select().from(activities).where(
+      and(eq(activities.dealId, dealId), eq(activities.organizationId, organizationId))
+    );
   }
   
   async createActivity(activity: InsertActivity): Promise<Activity> {
@@ -151,17 +206,22 @@ export class DbStorage implements IStorage {
     return newActivity;
   }
   
-  async getAllContractTemplates(): Promise<ContractTemplate[]> {
-    return await db.select().from(contractTemplates);
+  // Contract template operations
+  async getAllContractTemplates(organizationId: string): Promise<ContractTemplate[]> {
+    return await db.select().from(contractTemplates).where(eq(contractTemplates.organizationId, organizationId));
   }
   
-  async getContractTemplate(id: string): Promise<ContractTemplate | undefined> {
-    const [template] = await db.select().from(contractTemplates).where(eq(contractTemplates.id, id));
+  async getContractTemplate(id: string, organizationId: string): Promise<ContractTemplate | undefined> {
+    const [template] = await db.select().from(contractTemplates).where(
+      and(eq(contractTemplates.id, id), eq(contractTemplates.organizationId, organizationId))
+    );
     return template;
   }
   
-  async getContractTemplatesByType(type: string): Promise<ContractTemplate[]> {
-    return await db.select().from(contractTemplates).where(eq(contractTemplates.type, type));
+  async getContractTemplatesByType(type: string, organizationId: string): Promise<ContractTemplate[]> {
+    return await db.select().from(contractTemplates).where(
+      and(eq(contractTemplates.type, type), eq(contractTemplates.organizationId, organizationId))
+    );
   }
   
   async createContractTemplate(template: InsertContractTemplate): Promise<ContractTemplate> {
@@ -169,24 +229,31 @@ export class DbStorage implements IStorage {
     return newTemplate;
   }
   
-  async updateContractTemplate(id: string, template: Partial<InsertContractTemplate>): Promise<ContractTemplate | undefined> {
+  async updateContractTemplate(id: string, organizationId: string, template: Partial<InsertContractTemplate>): Promise<ContractTemplate | undefined> {
     const [updated] = await db.update(contractTemplates).set({
       ...template,
       updatedAt: new Date(),
-    }).where(eq(contractTemplates.id, id)).returning();
+    }).where(
+      and(eq(contractTemplates.id, id), eq(contractTemplates.organizationId, organizationId))
+    ).returning();
     return updated;
   }
   
-  async deleteContractTemplate(id: string): Promise<void> {
-    await db.delete(contractTemplates).where(eq(contractTemplates.id, id));
+  async deleteContractTemplate(id: string, organizationId: string): Promise<void> {
+    await db.delete(contractTemplates).where(
+      and(eq(contractTemplates.id, id), eq(contractTemplates.organizationId, organizationId))
+    );
   }
   
-  async getAllEmailTemplates(): Promise<EmailTemplate[]> {
-    return await db.select().from(emailTemplates);
+  // Email template operations
+  async getAllEmailTemplates(organizationId: string): Promise<EmailTemplate[]> {
+    return await db.select().from(emailTemplates).where(eq(emailTemplates.organizationId, organizationId));
   }
   
-  async getEmailTemplate(id: string): Promise<EmailTemplate | undefined> {
-    const [template] = await db.select().from(emailTemplates).where(eq(emailTemplates.id, id));
+  async getEmailTemplate(id: string, organizationId: string): Promise<EmailTemplate | undefined> {
+    const [template] = await db.select().from(emailTemplates).where(
+      and(eq(emailTemplates.id, id), eq(emailTemplates.organizationId, organizationId))
+    );
     return template;
   }
   
@@ -195,16 +262,20 @@ export class DbStorage implements IStorage {
     return newTemplate;
   }
   
-  async updateEmailTemplate(id: string, template: Partial<InsertEmailTemplate>): Promise<EmailTemplate | undefined> {
+  async updateEmailTemplate(id: string, organizationId: string, template: Partial<InsertEmailTemplate>): Promise<EmailTemplate | undefined> {
     const [updated] = await db.update(emailTemplates).set({
       ...template,
       updatedAt: new Date(),
-    }).where(eq(emailTemplates.id, id)).returning();
+    }).where(
+      and(eq(emailTemplates.id, id), eq(emailTemplates.organizationId, organizationId))
+    ).returning();
     return updated;
   }
   
-  async deleteEmailTemplate(id: string): Promise<void> {
-    await db.delete(emailTemplates).where(eq(emailTemplates.id, id));
+  async deleteEmailTemplate(id: string, organizationId: string): Promise<void> {
+    await db.delete(emailTemplates).where(
+      and(eq(emailTemplates.id, id), eq(emailTemplates.organizationId, organizationId))
+    );
   }
 }
 
