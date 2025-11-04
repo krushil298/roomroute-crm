@@ -305,13 +305,14 @@ export function LeadImport() {
           </div>
           <div className="space-y-2">
             <p className="text-xs text-muted-foreground">
-              <strong>Expected format (CSV or Excel):</strong>
+              <strong>Expected column headers:</strong>
             </p>
             <pre className="text-xs bg-muted p-3 rounded-md overflow-x-auto">
-              Lead or Project; Company; Segment; Primary Contact; Contact Phone; Contact Email; Est Room Nights
-              {"\n"}Bridge rebuild on I-65; DOT Contractors; Construction; John Doe; 555-1234; john@example.com; 50
-              {"\n"}Corporate Travel Program; Tech Inc; Corporate; Jane Smith; 555-5678; jane@example.com; 100
+              Lead or Project | Company | Segment | Primary Contact | Contact Phone | Contact Email | Est Room Nights
             </pre>
+            <p className="text-xs text-muted-foreground">
+              Note: Segment can be any text value (e.g., "Corporate/Distribution", "Construction/Industrial", "SMERF/Weddings")
+            </p>
           </div>
         </TabsContent>
         <TabsContent value="paste" className="space-y-4">

@@ -70,7 +70,7 @@ export default function Contacts() {
     defaultValues: {
       leadOrProject: "",
       company: null,
-      segment: "Other",
+      segment: "",
       primaryContact: null,
       email: null,
       phone: null,
@@ -205,23 +205,19 @@ export default function Contacts() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Business Segment *</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger data-testid="select-segment">
-                          <SelectValue placeholder="Select segment" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {BUSINESS_SEGMENTS.map((segment) => (
-                          <SelectItem key={segment} value={segment}>
-                            {segment}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <Input
+                        placeholder="Corporate, SMERF, Construction, etc."
+                        {...field}
+                        list="segment-suggestions"
+                        data-testid="input-segment"
+                      />
+                    </FormControl>
+                    <datalist id="segment-suggestions">
+                      {BUSINESS_SEGMENTS.map((segment) => (
+                        <option key={segment} value={segment} />
+                      ))}
+                    </datalist>
                     <FormMessage />
                   </FormItem>
                 )}

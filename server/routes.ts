@@ -190,17 +190,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!Array.isArray(contacts)) {
         return res.status(400).json({ error: "Contacts must be an array" });
       }
-      const validated = contacts.map(c => {
-        const parsed = insertContactSchema.parse(c);
-        return {
-          ...parsed,
-          organizationId: user.organizationId!,
-        };
+      const validated = contacts.map((c, index) => {
+        try {
+          const parsed = insertContactSchema.parse(c);
+          return {
+            ...parsed,
+            organizationId: user.organizationId!,
+          };
+        } catch (validationError: any) {
+          console.error(`Validation error for contact at index ${index}:`, validationError);
+          console.error('Contact data:', c);
+          throw new Error(`Row ${index + 1}: ${validationError.message || validationError.errors?.[0]?.message || 'Invalid data'}`);
+        }
       });
       const imported = await storage.importContacts(validated);
       res.status(201).json(imported);
-    } catch (error) {
-      res.status(400).json({ error: "Invalid contact data" });
+    } catch (error: any) {
+      console.error('Import error:', error);
+      res.status(400).json({ 
+        error: error.message || "Invalid contact data",
+        details: error.errors || undefined
+      });
     }
   });
 
