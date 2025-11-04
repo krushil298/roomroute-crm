@@ -26,7 +26,10 @@ const organizationProfileSchema = z.object({
   country: z.string().optional().nullable(),
   contactName: z.string().optional().nullable(),
   contactPhone: z.string().optional().nullable(),
-  contactEmail: z.string().email("Invalid email").optional().or(z.literal("")).nullable(),
+  contactEmail: z.preprocess(
+    (val) => val === "" || val === null || val === undefined ? null : val,
+    z.string().email("Invalid email").nullable().optional()
+  ),
   hasMeetingRooms: z.boolean().optional(),
   meetingRoomCapacity: z.preprocess(
     (val) => val === "" || val === null || val === undefined ? null : Number(val),
