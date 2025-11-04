@@ -55,11 +55,7 @@ export function EmailComposer({
 
   const sendEmailMutation = useMutation({
     mutationFn: async (emailData: { to: string; subject: string; body: string }) => {
-      return await apiRequest("/api/send-email", {
-        method: "POST",
-        body: JSON.stringify(emailData),
-        headers: { "Content-Type": "application/json" },
-      });
+      return await apiRequest("POST", "/api/send-email", emailData);
     },
     onSuccess: () => {
       toast({

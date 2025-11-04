@@ -506,8 +506,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Missing required fields" });
       }
       
+      // Get authenticated user for personalized From name and Reply-To
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || !user.email) {
+        return res.status(403).json({ error: "User not found or email not set" });
+      }
+      
+      // Construct sender name from user's first and last name
+      const senderName = `${user.firstName} ${user.lastName}`.trim() || "CRM User";
+      const replyToEmail = user.email;
+      
       if (!process.env.RESEND_API_KEY) {
-        console.log("Email send request (no Resend configured):", { to, subject, bodyLength: body.length });
+        console.log("Email send request (no Resend configured):", { 
+          from: `${senderName} <onboarding@resend.dev>`,
+          replyTo: replyToEmail,
+          to, 
+          subject, 
+          bodyLength: body.length 
+        });
         return res.json({ success: true, message: "Email logged (Resend not configured)" });
       }
 
@@ -515,12 +532,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const resend = new Resend(process.env.RESEND_API_KEY);
       
       await resend.emails.send({
-        from: "CRM App <onboarding@resend.dev>",
+        from: `${senderName} <onboarding@resend.dev>`,
+        replyTo: replyToEmail,
         to: [to],
         subject: subject,
         html: body.replace(/\n/g, "<br>"),
       });
 
+      console.log(`✅ Email sent - From: ${senderName} <onboarding@resend.dev> | Reply-To: ${replyToEmail} | To: ${to}`);
       res.json({ success: true, message: "Email sent successfully" });
     } catch (error) {
       console.error("Email send error:", error);
