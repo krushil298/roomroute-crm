@@ -165,7 +165,14 @@ export default function Contacts() {
               key={contact.id}
               {...contact}
               avatarUrl={contact.avatarUrl ?? undefined}
-              onEdit={() => console.log("Edit", contact.leadOrProject)}
+              onEdit={() => {
+                // TODO: Implement edit dialog
+                console.log("Edit", contact.leadOrProject);
+              }}
+              onViewDetails={() => {
+                // TODO: Implement view details dialog or navigate to detail page
+                console.log("View details", contact.leadOrProject);
+              }}
             />
           ))}
         </div>

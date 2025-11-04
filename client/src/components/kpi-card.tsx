@@ -10,11 +10,16 @@ interface KPICardProps {
     value: number;
     isPositive: boolean;
   };
+  onClick?: () => void;
 }
 
-export function KPICard({ title, value, icon: Icon, trend }: KPICardProps) {
+export function KPICard({ title, value, icon: Icon, trend, onClick }: KPICardProps) {
   return (
-    <Card className="p-6">
+    <Card 
+      className={`p-6 ${onClick ? 'hover-elevate cursor-pointer' : ''}`}
+      onClick={onClick}
+      data-testid={`card-kpi-${title.toLowerCase().replace(/\s+/g, '-')}`}
+    >
       <div className="flex items-center justify-between gap-2 mb-4">
         <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           {title}

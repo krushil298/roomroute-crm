@@ -5,9 +5,16 @@ import { PipelineStage } from "@/components/pipeline-stage";
 import { Users, TrendingUp, DollarSign, Activity as ActivityIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
-import type { Contact, Deal, Activity } from "@shared/schema";
+import type { Contact, Deal, Activity, Organization } from "@shared/schema";
+import { useLocation } from "wouter";
 
 export default function Dashboard() {
+  const [, setLocation] = useLocation();
+  
+  const { data: organization } = useQuery<Organization>({
+    queryKey: ["/api/organization"],
+  });
+
   const { data: contacts = [] } = useQuery<Contact[]>({
     queryKey: ["/api/contacts"],
   });
@@ -30,24 +37,28 @@ export default function Dashboard() {
       value: contacts.length,
       icon: Users,
       trend: { value: 0, isPositive: true },
+      onClick: () => setLocation("/contacts"),
     },
     {
       title: "Active Deals",
       value: deals.filter(d => d.stage !== "closed").length,
       icon: TrendingUp,
       trend: { value: 0, isPositive: true },
+      onClick: () => setLocation("/deals"),
     },
     {
       title: "Pipeline Value",
       value: `$${(totalPipelineValue / 1000).toFixed(0)}K`,
       icon: DollarSign,
       trend: { value: 0, isPositive: true },
+      onClick: () => setLocation("/deals"),
     },
     {
       title: "This Week",
       value: activities.length,
       icon: ActivityIcon,
       trend: { value: 0, isPositive: true },
+      onClick: () => setLocation("/activities"),
     },
   ];
 
@@ -57,7 +68,7 @@ export default function Dashboard() {
       id: activity.id,
       type: activity.type as "call" | "email" | "meeting" | "note",
       title: activity.description,
-      contact: contacts.find(c => c.id === activity.contactId)?.name || "Unknown",
+      contact: contacts.find(c => c.id === activity.contactId)?.leadOrProject || "Unknown",
       timestamp: formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true }),
     }));
 
@@ -68,7 +79,7 @@ export default function Dashboard() {
         id: deal.id,
         title: deal.title,
         value: Number(deal.value),
-        contact: contacts.find(c => c.id === deal.contactId)?.name || "Unknown",
+        contact: contacts.find(c => c.id === deal.contactId)?.leadOrProject || "Unknown",
       }));
 
   const pipelineData = [
@@ -97,7 +108,14 @@ export default function Dashboard() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold mb-1">Dashboard</h1>
+        {organization?.name && (
+          <h1 className="text-2xl font-semibold mb-1" data-testid="text-hotel-name">
+            {organization.name}
+          </h1>
+        )}
+        {!organization?.name && (
+          <h1 className="text-2xl font-semibold mb-1">Dashboard</h1>
+        )}
         <p className="text-sm text-muted-foreground">
           Welcome back! Here's your CRM overview.
         </p>

@@ -7,6 +7,7 @@ import { useState } from "react";
 import { EmailComposer } from "./email-composer";
 
 interface ContactCardProps {
+  id: string;
   leadOrProject: string;
   company: string | null;
   segment: string;
@@ -16,6 +17,7 @@ interface ContactCardProps {
   estRoomNights: number | null;
   avatarUrl?: string;
   onEdit?: () => void;
+  onViewDetails?: () => void;
   onDelete?: () => void;
 }
 
@@ -29,6 +31,7 @@ const segmentColors: Record<string, string> = {
 };
 
 export function ContactCard({
+  id,
   leadOrProject,
   company,
   segment,
@@ -38,6 +41,7 @@ export function ContactCard({
   estRoomNights,
   avatarUrl,
   onEdit,
+  onViewDetails,
   onDelete,
 }: ContactCardProps) {
   const [emailComposerOpen, setEmailComposerOpen] = useState(false);
@@ -115,11 +119,16 @@ export function ContactCard({
             size="sm"
             className="flex-1"
             onClick={onEdit}
-            data-testid="button-edit-contact"
+            data-testid={`button-edit-contact-${id}`}
           >
             Edit
           </Button>
-          <Button variant="outline" size="sm" data-testid="button-view-contact">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={onViewDetails}
+            data-testid={`button-view-contact-${id}`}
+          >
             View Details
           </Button>
         </div>
