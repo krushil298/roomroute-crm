@@ -288,7 +288,19 @@ export default function Settings() {
           </CardContent>
         </Card>
 
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              console.log("=== FORM DEBUG ===");
+              console.log("Form values:", form.getValues());
+              console.log("Form errors:", form.formState.errors);
+              console.log("Is form valid:", form.formState.isValid);
+            }}
+          >
+            Debug Form
+          </Button>
           <Button
             type="submit"
             disabled={updateMutation.isPending}
