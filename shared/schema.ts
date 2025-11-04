@@ -92,6 +92,7 @@ export const contacts = pgTable("contacts", {
   phone: text("phone"),
   email: text("email"),
   estRoomNights: integer("est_room_nights"),
+  potentialValue: decimal("potential_value", { precision: 10, scale: 2 }),
   avatarUrl: text("avatar_url"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

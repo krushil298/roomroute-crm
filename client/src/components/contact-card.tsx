@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Mail, Phone, Building2, User, Briefcase, Hotel } from "lucide-react";
+import { Mail, Phone, Building2, User, Briefcase, Hotel, DollarSign } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { EmailComposer } from "./email-composer";
@@ -15,6 +15,7 @@ interface ContactCardProps {
   email: string | null;
   phone: string | null;
   estRoomNights: number | null;
+  potentialValue?: string | null;
   avatarUrl?: string;
   onEdit?: () => void;
   onViewDetails?: () => void;
@@ -39,6 +40,7 @@ export function ContactCard({
   email,
   phone,
   estRoomNights,
+  potentialValue,
   avatarUrl,
   onEdit,
   onViewDetails,
@@ -110,6 +112,12 @@ export function ContactCard({
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Hotel className="h-4 w-4 shrink-0" />
               <span data-testid="text-est-room-nights">{estRoomNights} room nights</span>
+            </div>
+          )}
+          {potentialValue && parseFloat(potentialValue) > 0 && (
+            <div className="flex items-center gap-2 text-sm font-medium text-primary">
+              <DollarSign className="h-4 w-4 shrink-0" />
+              <span data-testid="text-potential-value">${parseFloat(potentialValue).toLocaleString()}</span>
             </div>
           )}
         </div>

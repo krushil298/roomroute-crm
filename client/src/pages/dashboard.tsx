@@ -27,7 +27,11 @@ export default function Dashboard() {
     queryKey: ["/api/activities"],
   });
 
-  const totalPipelineValue = deals.reduce((sum, deal) => 
+  const totalLeadPipeline = contacts.reduce((sum, contact) => 
+    sum + Number(contact.potentialValue || 0), 0
+  );
+
+  const totalDealPipeline = deals.reduce((sum, deal) => 
     sum + Number(deal.value), 0
   );
 
@@ -40,16 +44,16 @@ export default function Dashboard() {
       onClick: () => setLocation("/contacts"),
     },
     {
-      title: "Active Deals",
-      value: deals.filter(d => d.stage !== "closed").length,
-      icon: TrendingUp,
+      title: "Lead Pipeline",
+      value: `$${(totalLeadPipeline / 1000).toFixed(0)}K`,
+      icon: DollarSign,
       trend: { value: 0, isPositive: true },
-      onClick: () => setLocation("/deals"),
+      onClick: () => setLocation("/contacts"),
     },
     {
-      title: "Pipeline Value",
-      value: `$${(totalPipelineValue / 1000).toFixed(0)}K`,
-      icon: DollarSign,
+      title: "Deal Pipeline",
+      value: `$${(totalDealPipeline / 1000).toFixed(0)}K`,
+      icon: TrendingUp,
       trend: { value: 0, isPositive: true },
       onClick: () => setLocation("/deals"),
     },

@@ -44,44 +44,19 @@ export function RevenueCalculator() {
         throw new Error("Please select a lead");
       }
       
-      // Update the contact with the estimated room nights
+      // Update the contact with the estimated room nights and potential value (lead pipeline)
       const totalRoomNights = (parseFloat(rooms) || 0) * (parseFloat(nightsPerWeek) || 0) * (parseFloat(weeks) || 0);
-      await apiRequest("PATCH", `/api/contacts/${selectedLeadId}`, {
+      const response = await apiRequest("PATCH", `/api/contacts/${selectedLeadId}`, {
         estRoomNights: Math.round(totalRoomNights),
+        potentialValue: revenue.toString(),
       });
-
-      // Also create or update a deal for this contact with the pipeline value
-      const selectedContact = contacts.find(c => c.id === selectedLeadId);
-      
-      // Check if a deal already exists for this contact
-      const dealsResponse = await fetch("/api/deals");
-      const existingDeals = await dealsResponse.json();
-      const existingDeal = existingDeals.find((d: any) => d.contactId === selectedLeadId);
-      
-      if (existingDeal) {
-        // Update existing deal
-        await apiRequest("PATCH", `/api/deals/${existingDeal.id}`, {
-          value: revenue.toString(),
-        });
-      } else {
-        // Create new deal
-        await apiRequest("POST", "/api/deals", {
-          title: `Deal - ${selectedContact?.leadOrProject || "Unknown"}`,
-          contactId: selectedLeadId,
-          value: revenue.toString(),
-          stage: "lead",
-          probability: 25,
-        });
-      }
-      
-      return { success: true };
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/deals"] });
       toast({
         title: "Success",
-        description: "Revenue calculation saved to lead and pipeline",
+        description: "Lead potential value saved",
       });
     },
     onError: (error: Error) => {
