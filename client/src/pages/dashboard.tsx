@@ -29,25 +29,25 @@ export default function Dashboard() {
       title: "Total Contacts",
       value: contacts.length,
       icon: Users,
-      trend: { value: 12.5, isPositive: true },
+      trend: { value: 0, isPositive: true },
     },
     {
       title: "Active Deals",
       value: deals.filter(d => d.stage !== "closed").length,
       icon: TrendingUp,
-      trend: { value: 8.2, isPositive: true },
+      trend: { value: 0, isPositive: true },
     },
     {
       title: "Pipeline Value",
       value: `$${(totalPipelineValue / 1000).toFixed(0)}K`,
       icon: DollarSign,
-      trend: { value: 15.3, isPositive: true },
+      trend: { value: 0, isPositive: true },
     },
     {
       title: "This Week",
       value: activities.length,
       icon: ActivityIcon,
-      trend: { value: 3.1, isPositive: false },
+      trend: { value: 0, isPositive: true },
     },
   ];
 
