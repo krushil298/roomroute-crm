@@ -514,12 +514,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Construct sender name from user's first and last name
-      const senderName = `${user.firstName} ${user.lastName}`.trim() || "CRM User";
+      const senderName = `${user.firstName} ${user.lastName}`.trim() || "RoomRoute";
       const replyToEmail = user.email;
+      
+      // Use custom domain if configured, otherwise fall back to Resend sandbox domain
+      // After verifying RoomRoute.org in Resend, set SENDER_EMAIL env var to something like:
+      // sales@roomroute.org or info@roomroute.org
+      const senderEmail = process.env.SENDER_EMAIL || "onboarding@resend.dev";
+      const fromAddress = `${senderName} <${senderEmail}>`;
       
       if (!process.env.RESEND_API_KEY) {
         console.log("Email send request (no Resend configured):", { 
-          from: `${senderName} <onboarding@resend.dev>`,
+          from: fromAddress,
           replyTo: replyToEmail,
           to, 
           subject, 
@@ -532,14 +538,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const resend = new Resend(process.env.RESEND_API_KEY);
       
       await resend.emails.send({
-        from: `${senderName} <onboarding@resend.dev>`,
+        from: fromAddress,
         replyTo: replyToEmail,
         to: [to],
         subject: subject,
         html: body.replace(/\n/g, "<br>"),
       });
 
-      console.log(`✅ Email sent - From: ${senderName} <onboarding@resend.dev> | Reply-To: ${replyToEmail} | To: ${to}`);
+      console.log(`✅ Email sent - From: ${fromAddress} | Reply-To: ${replyToEmail} | To: ${to}`);
       res.json({ success: true, message: "Email sent successfully" });
     } catch (error) {
       console.error("Email send error:", error);
