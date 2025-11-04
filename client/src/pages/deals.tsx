@@ -3,60 +3,36 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search } from "lucide-react";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import type { Deal, Contact } from "@shared/schema";
+import { format } from "date-fns";
 
 export default function Deals() {
   const [searchQuery, setSearchQuery] = useState("");
 
-  const deals = [
-    {
-      title: "Enterprise Software License",
-      value: 45000,
-      stage: "Negotiation",
-      contact: "Sarah Johnson",
-      closingDate: "Dec 15, 2025",
-      probability: 75,
-    },
-    {
-      title: "Cloud Migration Project",
-      value: 28000,
-      stage: "Qualified",
-      contact: "Mike Chen",
-      closingDate: "Jan 10, 2026",
-      probability: 60,
-    },
-    {
-      title: "Website Redesign",
-      value: 15000,
-      stage: "Proposal",
-      contact: "Emily Rodriguez",
-      closingDate: "Dec 20, 2025",
-      probability: 50,
-    },
-    {
-      title: "Mobile App Development",
-      value: 35000,
-      stage: "New",
-      contact: "David Kim",
-      closingDate: "Feb 1, 2026",
-      probability: 30,
-    },
-    {
-      title: "Consulting Package",
-      value: 12000,
-      stage: "Closed",
-      contact: "Lisa Anderson",
-      closingDate: "Nov 30, 2025",
-      probability: 100,
-    },
-    {
-      title: "Annual Support Contract",
-      value: 24000,
-      stage: "Negotiation",
-      contact: "James Wilson",
-      closingDate: "Dec 31, 2025",
-      probability: 80,
-    },
-  ];
+  const { data: deals = [], isLoading: dealsLoading } = useQuery<Deal[]>({
+    queryKey: ["/api/deals"],
+  });
+
+  const { data: contacts = [] } = useQuery<Contact[]>({
+    queryKey: ["/api/contacts"],
+  });
+
+  const dealsWithContactNames = deals.map(deal => ({
+    title: deal.title,
+    value: Number(deal.value),
+    stage: deal.stage,
+    contact: contacts.find(c => c.id === deal.contactId)?.name || "No contact",
+    closingDate: deal.expectedCloseDate ? format(new Date(deal.expectedCloseDate), "MMM dd, yyyy") : "No date",
+    probability: deal.probability,
+  }));
+
+  const filteredDeals = searchQuery
+    ? dealsWithContactNames.filter(deal =>
+        deal.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        deal.contact.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : dealsWithContactNames;
 
   return (
     <div className="p-6 space-y-6">
@@ -84,11 +60,21 @@ export default function Deals() {
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {deals.map((deal) => (
-          <DealCard key={deal.title} {...deal} />
-        ))}
-      </div>
+      {dealsLoading ? (
+        <div className="text-center py-12 text-muted-foreground">
+          Loading deals...
+        </div>
+      ) : filteredDeals.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          {searchQuery ? "No deals match your search" : "No deals yet. Click 'Add Deal' to create your first deal."}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredDeals.map((deal, index) => (
+            <DealCard key={`${deal.title}-${index}`} {...deal} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
