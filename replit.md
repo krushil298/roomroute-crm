@@ -1,7 +1,9 @@
-# Multi-Tenant CRM Application
+# RoomRoute - Multi-Tenant Hotel CRM
 
 ## Overview
-A comprehensive multi-tenant CRM (Customer Relationship Management) system built with Node.js, React, and PostgreSQL. The application features complete data isolation between organizations, Replit Auth authentication, contact management, deal tracking, activity logging, sales pipeline management, contract templates, email templates, and lead import functionality.
+**RoomRoute** is a comprehensive multi-tenant CRM built specifically for hotels and hospitality businesses. Built with Node.js, React, and PostgreSQL, the application features complete data isolation between organizations, Replit Auth authentication, contact management, deal tracking, activity logging, sales pipeline management, contract templates, email templates, and lead import functionality.
+
+**Domain**: RoomRoute.org (purchased, pending DNS configuration)
 
 ## Multi-Tenancy Architecture
 **Complete data isolation between organizations** - Each hotel/organization has separate login credentials and can only access their own data. All data tables include organizationId foreign keys with server-side enforcement.
@@ -183,6 +185,12 @@ Syncs the Drizzle schema with the PostgreSQL database.
 - Fixed security: organizationId always set server-side, preventing client tampering
 - Tested end-to-end with two organizations confirming complete data isolation
 
+### Branding Updates (Nov 4, 2025)
+- Updated application branding from generic "CRM" to "RoomRoute"
+- Updated landing page hero, sidebar label, onboarding page, and HTML title
+- Prepared email system for custom domain support via SENDER_EMAIL environment variable
+- Application now ready for RoomRoute.org domain configuration
+
 ### Previous Changes
 - Implemented complete database schema with all CRM entities
 - Built full CRUD API for contacts, deals, activities, and templates
@@ -194,3 +202,130 @@ Syncs the Drizzle schema with the PostgreSQL database.
 - Integrated Resend for real email sending
 - Added sample contact, deal, and activity data for testing
 - Fixed email composer state management for proper recipient handling
+
+---
+
+## 🌐 RoomRoute.org Domain Setup
+
+### Part 1: Add Custom Domain to Replit Deployment
+
+This connects RoomRoute.org to your published Replit app.
+
+#### Steps:
+
+1. **Publish Your App** (if not already published)
+   - Click the **Publish** button in Replit
+   - Choose **Autoscale Deployment**
+   - Wait for deployment to complete
+
+2. **Open Deployment Settings**
+   - Go to your deployed app's page
+   - Click on **Deployments** tab
+   - Click **Settings** or **Custom Domain**
+
+3. **Get DNS Records from Replit**
+   - Click **Add Custom Domain**
+   - Enter: `roomroute.org`
+   - Replit will provide DNS records (typically an `A` record and a `TXT` record)
+   - **Keep this page open** - you'll need these values
+
+4. **Configure DNS at Your Domain Registrar**
+   - Log in to where you purchased RoomRoute.org
+   - Navigate to DNS settings
+   - Add the records provided by Replit:
+     - **A Record**: Point `@` (root domain) to Replit's IP address
+     - **TXT Record**: Add the verification TXT record
+   - *Optional*: Add a `CNAME` record for `www` pointing to your main domain
+
+5. **Verify Domain in Replit**
+   - Return to Replit deployment settings
+   - Click **Verify DNS Records**
+   - Status will change from "Pending" to "Verified" (may take 5-48 hours for DNS propagation)
+
+6. **SSL/TLS Certificate**
+   - Replit automatically provisions SSL certificates for verified domains
+   - Your app will be accessible via `https://roomroute.org`
+
+---
+
+### Part 2: Add Custom Domain to Resend for Email Sending
+
+This allows you to send emails from addresses like `sales@roomroute.org`.
+
+#### Steps:
+
+1. **Log in to Resend Dashboard**
+   - Go to https://resend.com/
+   - Sign in with your account
+
+2. **Add Domain**
+   - Navigate to **Domains** in the left sidebar
+   - Click **Add Domain** button
+   - Enter: `roomroute.org`
+   - Choose a region (select closest to your customers)
+   - **Recommendation**: Use a subdomain like `mail.roomroute.org` if you want to keep email separate
+
+3. **Get DNS Records from Resend**
+   - Resend will generate three types of DNS records:
+     - **SPF (TXT record)**: Specifies which servers can send email for your domain
+     - **DKIM (TXT record)**: Email authentication to prevent spoofing
+     - **MX record**: Allows bounce/complaint feedback (Priority: 10)
+   - **Keep this page open** - you'll need these values
+
+4. **Add DNS Records at Your Domain Registrar**
+   - Go back to your domain registrar's DNS settings
+   - Add all three records exactly as shown in Resend:
+   
+   **Example Records** (your actual values will differ):
+   ```
+   Type: TXT
+   Name: resend._domainkey
+   Value: p=MIGfMA0GCSqG... (long DKIM key from Resend)
+   
+   Type: TXT  
+   Name: @
+   Value: v=spf1 include:_spf.resend.com ~all
+   (Note: If you already have an SPF record, merge them - you can only have ONE SPF record)
+   
+   Type: MX
+   Name: @
+   Value: feedback-smtp.resend.com
+   Priority: 10
+   ```
+
+5. **Verify DNS Records in Resend**
+   - Return to Resend dashboard
+   - Click **Verify DNS Records**
+   - Wait 12-15 minutes for DKIM to verify
+   - All three records should show "Verified" (green checkmark)
+   - Status may take up to 72 hours but usually verifies within 30 minutes
+
+6. **Create API Key for Custom Domain** (if needed)
+   - Go to **API Keys** in Resend dashboard
+   - Click **Create API Key**
+   - Name: "RoomRoute Production"
+   - Permission: "Sending Access"
+   - Domain: Select `roomroute.org`
+   - **Save the key** - you won't be able to see it again
+
+7. **Update Environment Variable in Replit**
+   - Go to your Replit project
+   - Open **Secrets** (in Tools pane)
+   - Add a new secret:
+     - Name: `SENDER_EMAIL`
+     - Value: `sales@roomroute.org` (or `info@roomroute.org`, etc.)
+   - **Republish** your deployment for changes to take effect
+
+---
+
+### Email Configuration Summary
+
+**Current Setup** (Testing with Resend sandbox):
+- From: `User Name <onboarding@resend.dev>`
+- Reply-To: `user@actual-email.com`
+
+**After RoomRoute.org Verification**:
+- From: `User Name <sales@roomroute.org>` (or whatever you set in SENDER_EMAIL)
+- Reply-To: `user@actual-email.com`
+
+The code is already prepared to use the custom domain - just set the `SENDER_EMAIL` environment variable!
