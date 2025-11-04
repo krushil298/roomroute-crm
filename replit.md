@@ -1,7 +1,17 @@
-# CRM Application
+# Multi-Tenant CRM Application
 
 ## Overview
-A comprehensive CRM (Customer Relationship Management) system built with Node.js, React, and PostgreSQL. The application features contact management, deal tracking, activity logging, sales pipeline management, contract templates, email templates, and lead import functionality.
+A comprehensive multi-tenant CRM (Customer Relationship Management) system built with Node.js, React, and PostgreSQL. The application features complete data isolation between organizations, Replit Auth authentication, contact management, deal tracking, activity logging, sales pipeline management, contract templates, email templates, and lead import functionality.
+
+## Multi-Tenancy Architecture
+**Complete data isolation between organizations** - Each hotel/organization has separate login credentials and can only access their own data. All data tables include organizationId foreign keys with server-side enforcement.
+
+### Authentication
+- **Replit Auth (OIDC)**: Integrated authentication supporting Google, GitHub, and email/password
+- **Landing Page**: Shown to unauthenticated users
+- **Onboarding Flow**: New users create an organization on first login
+- **Session Management**: PostgreSQL-backed sessions for reliability
+- **Security**: organizationId always set server-side from authenticated session, preventing data isolation breaches
 
 ## Project Architecture
 
@@ -19,12 +29,14 @@ A comprehensive CRM (Customer Relationship Management) system built with Node.js
 - **API**: RESTful JSON API
 
 ### Database Schema
-- **contacts**: Customer contact information
-- **deals**: Sales opportunities with value and stage tracking
-- **activities**: Activity log for contacts and deals
-- **contract_templates**: Reusable contract templates (LNR and Group categories)
-- **email_templates**: Email templates with subject and body
-- **users**: Authentication (basic structure)
+- **organizations**: Each hotel is an organization with complete data isolation
+- **users**: id (OIDC sub), email, first_name, last_name, profile_image_url, organization_id (FK)
+- **sessions**: PostgreSQL-backed session storage
+- **contacts**: Customer contact information (includes organization_id FK)
+- **deals**: Sales opportunities with value and stage tracking (includes organization_id FK)
+- **activities**: Activity log for contacts and deals (includes organization_id FK)
+- **contract_templates**: Reusable contract templates (includes organization_id FK)
+- **email_templates**: Email templates with subject and body (includes organization_id FK)
 
 ## Key Features
 
@@ -99,13 +111,24 @@ Syncs the Drizzle schema with the PostgreSQL database.
 
 ## API Endpoints
 
+**All endpoints require authentication** via Replit Auth session. Data is automatically filtered by the authenticated user's organizationId.
+
+### Authentication
+- `GET /api/login` - Initiate Replit Auth login flow
+- `GET /api/callback` - OAuth callback handler
+- `GET /api/logout` - Logout and end session
+- `GET /api/auth/user` - Get current authenticated user
+
+### Organizations
+- `POST /api/organizations` - Create organization (for onboarding)
+
 ### Contacts
-- `GET /api/contacts` - List all contacts
-- `GET /api/contacts/:id` - Get single contact
-- `POST /api/contacts` - Create contact
-- `PATCH /api/contacts/:id` - Update contact
-- `DELETE /api/contacts/:id` - Delete contact
-- `POST /api/contacts/import` - Bulk import contacts
+- `GET /api/contacts` - List contacts (filtered by organizationId)
+- `GET /api/contacts/:id` - Get single contact (validated against organizationId)
+- `POST /api/contacts` - Create contact (organizationId auto-set from session)
+- `PATCH /api/contacts/:id` - Update contact (organizationId cannot be changed)
+- `DELETE /api/contacts/:id` - Delete contact (validated against organizationId)
+- `POST /api/contacts/import` - Bulk import contacts (organizationId auto-set)
 
 ### Deals
 - `GET /api/deals` - List all deals
@@ -146,6 +169,21 @@ Syncs the Drizzle schema with the PostgreSQL database.
 - All key information visible on the dashboard
 
 ## Recent Changes (Nov 4, 2025)
+
+### Multi-Tenant Authentication (Latest)
+- Integrated Replit Auth (OIDC) for authentication with Google, GitHub, email/password support
+- Implemented multi-tenancy with complete data isolation between organizations
+- Added organizations and sessions tables to database
+- Updated all data tables (contacts, deals, activities, templates) with organizationId foreign keys
+- Implemented authentication middleware (isAuthenticated) on all API routes
+- Created landing page for unauthenticated users
+- Built onboarding flow for organization creation on first login
+- Updated App.tsx with authentication-aware routing logic
+- Added useAuth hook for frontend authentication state management
+- Fixed security: organizationId always set server-side, preventing client tampering
+- Tested end-to-end with two organizations confirming complete data isolation
+
+### Previous Changes
 - Implemented complete database schema with all CRM entities
 - Built full CRUD API for contacts, deals, activities, and templates
 - Connected all frontend pages to backend APIs

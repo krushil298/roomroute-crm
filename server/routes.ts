@@ -87,13 +87,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user?.organizationId) {
         return res.status(403).json({ error: "No organization" });
       }
-      const validated = insertContactSchema.parse(req.body);
+      // Validate request body without organizationId (security: client cannot set orgId)
+      const validated = insertContactSchema.omit({ organizationId: true }).parse(req.body);
+      
+      // Explicitly construct contact with only validated fields + server-side orgId
       const contact = await storage.createContact({
-        ...validated,
-        organizationId: user.organizationId,
+        name: validated.name,
+        email: validated.email,
+        phone: validated.phone,
+        company: validated.company,
+        status: validated.status,
+        avatarUrl: validated.avatarUrl,
+        organizationId: user.organizationId, // Set from session, not client
       });
       res.status(201).json(contact);
     } catch (error) {
+      console.error("Contact creation error:", error);
       res.status(400).json({ error: "Invalid contact data" });
     }
   });
@@ -105,7 +114,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user?.organizationId) {
         return res.status(403).json({ error: "No organization" });
       }
-      const contact = await storage.updateContact(req.params.id, user.organizationId, req.body);
+      // Security: prevent client from modifying organizationId
+      const { organizationId: _, ...updates } = req.body;
+      const validated = insertContactSchema.omit({ organizationId: true }).partial().parse(updates);
+      const contact = await storage.updateContact(req.params.id, user.organizationId, validated);
       if (!contact) {
         return res.status(404).json({ error: "Contact not found" });
       }
