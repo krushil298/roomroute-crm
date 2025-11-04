@@ -60,7 +60,7 @@ export default function Onboarding() {
     <div className="min-h-screen flex items-center justify-center bg-background">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle data-testid="text-title">Welcome to Hotel CRM</CardTitle>
+          <CardTitle data-testid="text-title">Welcome to RoomRoute</CardTitle>
           <CardDescription>
             Let's get started by creating your organization
           </CardDescription>

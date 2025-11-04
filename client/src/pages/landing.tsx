@@ -14,10 +14,10 @@ export default function Landing() {
           {/* Hero Section */}
           <div className="text-center mb-16">
             <h1 className="text-5xl font-bold mb-4" data-testid="text-title">
-              Hotel CRM
+              RoomRoute
             </h1>
             <p className="text-xl text-muted-foreground mb-8" data-testid="text-subtitle">
-              Manage your hotel contacts, deals, and pipeline in one place
+              Hotel CRM built for the hospitality industry
             </p>
             <Button 
               size="lg" 
