@@ -59,7 +59,7 @@ export default function Settings() {
   });
 
   const { data: user } = useQuery<User>({
-    queryKey: ["/api/user"],
+    queryKey: ["/api/auth/user"],
   });
 
   const form = useForm<OrganizationProfile>({
