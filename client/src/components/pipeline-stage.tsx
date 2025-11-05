@@ -55,38 +55,40 @@ export function PipelineStage({ stage, deals, color, onDealClick, onDeleteDeal }
               className="p-3 hover-elevate active-elevate-2 transition-all relative group"
               data-testid={`card-deal-${deal.id}`}
             >
-              <div className="space-y-1" onClick={() => onDealClick?.(deal.id)} style={{ cursor: 'pointer' }}>
+              <div className="space-y-1" onClick={() => onDealClick?.(deal.id)} style={{ cursor: onDealClick ? 'pointer' : 'default' }}>
                 <div className="flex items-start justify-between gap-2">
                   <p className="font-medium text-sm line-clamp-1 flex-1" data-testid={`text-deal-title-${deal.id}`}>
                     {deal.title}
                   </p>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-6 w-6"
-                        data-testid={`button-deal-menu-${deal.id}`}
-                      >
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDealClick?.(deal.id); }} data-testid={`menu-edit-${deal.id}`}>
-                        <Edit className="h-4 w-4 mr-2" />
-                        Edit Deal
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem 
-                        className="text-destructive" 
-                        onClick={(e) => { e.stopPropagation(); onDeleteDeal?.(deal.id); }}
-                        data-testid={`menu-delete-${deal.id}`}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete Deal
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  {onDealClick && onDeleteDeal && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-6 w-6"
+                          data-testid={`button-deal-menu-${deal.id}`}
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDealClick(deal.id); }} data-testid={`menu-edit-${deal.id}`}>
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit Deal
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem 
+                          className="text-destructive" 
+                          onClick={(e) => { e.stopPropagation(); onDeleteDeal(deal.id); }}
+                          data-testid={`menu-delete-${deal.id}`}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete Deal
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
                 <p className="text-xs text-muted-foreground line-clamp-1">
                   {deal.contact}

@@ -3,13 +3,27 @@ import { ActivityFeed } from "@/components/activity-feed";
 import { QuickActions } from "@/components/quick-actions";
 import { PipelineStage } from "@/components/pipeline-stage";
 import { Users, TrendingUp, DollarSign, Activity as ActivityIcon } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { formatDistanceToNow, startOfMonth, endOfMonth, subMonths } from "date-fns";
-import type { Contact, Deal, Activity, Organization } from "@shared/schema";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { formatDistanceToNow, startOfMonth, endOfMonth, subMonths, format } from "date-fns";
+import type { Contact, Deal, Activity, Organization, ClientInsertDeal } from "@shared/schema";
+import { insertDealSchema } from "@shared/schema";
 import { useLocation } from "wouter";
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Dashboard() {
   const [, setLocation] = useLocation();
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingDealId, setEditingDealId] = useState<string | null>(null);
+  const { toast } = useToast();
   
   const { data: organization } = useQuery<Organization>({
     queryKey: ["/api/organization/profile"],
@@ -26,6 +40,88 @@ export default function Dashboard() {
   const { data: activities = [] } = useQuery<Activity[]>({
     queryKey: ["/api/activities"],
   });
+
+  const editForm = useForm<ClientInsertDeal>({
+    resolver: zodResolver(insertDealSchema),
+    defaultValues: {
+      title: "",
+      value: "0.00",
+      stage: "qualified",
+      contactId: null,
+      expectedCloseDate: null,
+    },
+  });
+
+  const updateDealMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<ClientInsertDeal> }) => {
+      const response = await apiRequest("PATCH", `/api/deals/${id}`, data);
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/deals"] });
+      toast({
+        title: "Success",
+        description: "Deal updated successfully",
+      });
+      setIsEditDialogOpen(false);
+      setEditingDealId(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update deal",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteDealMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiRequest("DELETE", `/api/deals/${id}`);
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/deals"] });
+      toast({
+        title: "Success",
+        description: "Deal deleted successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete deal",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleEditSubmit = (data: ClientInsertDeal) => {
+    if (editingDealId) {
+      updateDealMutation.mutate({ id: editingDealId, data });
+    }
+  };
+
+  const handleDealClick = (dealId: string) => {
+    const deal = deals.find((d) => d.id === dealId);
+    if (deal) {
+      editForm.reset({
+        title: deal.title,
+        value: deal.value,
+        stage: deal.stage,
+        contactId: deal.contactId,
+        expectedCloseDate: deal.expectedCloseDate,
+      });
+      setEditingDealId(dealId);
+      setIsEditDialogOpen(true);
+    }
+  };
+
+  const handleDeleteDeal = (dealId: string) => {
+    if (window.confirm("Are you sure you want to delete this deal?")) {
+      deleteDealMutation.mutate(dealId);
+    }
+  };
 
   // Current month date range
   const now = new Date();
@@ -224,10 +320,151 @@ export default function Dashboard() {
         <h2 className="text-lg font-semibold mb-4">Pipeline Overview</h2>
         <div className="flex gap-4 overflow-x-auto pb-4">
           {pipelineData.map((stage) => (
-            <PipelineStage key={stage.stage} {...stage} />
+            <PipelineStage 
+              key={stage.stage} 
+              {...stage} 
+              onDealClick={stage.stage !== "Leads" ? handleDealClick : undefined}
+              onDeleteDeal={stage.stage !== "Leads" ? handleDeleteDeal : undefined}
+            />
           ))}
         </div>
       </div>
+
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Deal</DialogTitle>
+          </DialogHeader>
+          <Form {...editForm}>
+            <form onSubmit={editForm.handleSubmit(handleEditSubmit)} className="space-y-4">
+              <FormField
+                control={editForm.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Deal Title *</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Enter deal title" 
+                        {...field} 
+                        data-testid="input-edit-deal-title"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editForm.control}
+                name="contactId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Contact</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || ""}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-edit-deal-contact">
+                          <SelectValue placeholder="Select a contact" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {contacts.map((contact) => (
+                          <SelectItem key={contact.id} value={contact.id}>
+                            {contact.leadOrProject}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editForm.control}
+                name="value"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Deal Value ($) *</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        step="0.01"
+                        placeholder="0.00" 
+                        {...field} 
+                        data-testid="input-edit-deal-value"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editForm.control}
+                name="stage"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Stage *</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-edit-deal-stage">
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="lead">New</SelectItem>
+                        <SelectItem value="qualified">Qualified</SelectItem>
+                        <SelectItem value="proposal">Proposal</SelectItem>
+                        <SelectItem value="negotiation">Negotiation</SelectItem>
+                        <SelectItem value="closed">Closed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editForm.control}
+                name="expectedCloseDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Expected Close Date</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="date" 
+                        value={field.value ? (typeof field.value === 'string' ? (field.value as string).split('T')[0] : format(new Date(field.value as Date), "yyyy-MM-dd")) : ""}
+                        onChange={(e) => field.onChange(e.target.value || null)}
+                        data-testid="input-edit-deal-close-date"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex justify-end gap-2 pt-4">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setIsEditDialogOpen(false)}
+                  data-testid="button-cancel-edit-deal"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={updateDealMutation.isPending}
+                  data-testid="button-update-deal"
+                >
+                  {updateDealMutation.isPending ? "Updating..." : "Update Deal"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
