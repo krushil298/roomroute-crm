@@ -38,15 +38,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (user?.role === "super_admin" && user.currentOrganizationId) {
         const currentOrg = await storage.getOrganization(user.currentOrganizationId);
         
-        // If current org is archived, switch to first active org
-        if (currentOrg && currentOrg.active === false) {
+        // If current org is archived or not found, switch to first active org
+        if (!currentOrg || currentOrg.active === false) {
           const activeOrgs = await storage.getAllOrganizations();
           if (activeOrgs.length > 0) {
             await storage.updateUserCurrentOrg(userId, activeOrgs[0].id);
-            user = await storage.getUser(userId);
-          } else {
-            // No active orgs available, clear currentOrganizationId
-            await storage.updateUserCurrentOrg(userId, '');
             user = await storage.getUser(userId);
           }
         }
