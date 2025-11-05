@@ -42,6 +42,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const org = await storage.createOrganization(validated);
       await storage.updateUserOrganization(userId, org.id);
       
+      // Auto-assign 'admin' role to organization creator
+      await storage.addUserToOrganization({
+        userId,
+        organizationId: org.id,
+        role: "admin",
+        active: true,
+      });
+      
       res.status(201).json(org);
     } catch (error) {
       console.error("Error creating organization:", error);
