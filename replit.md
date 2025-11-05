@@ -8,6 +8,7 @@ RoomRoute is a comprehensive multi-tenant CRM designed for hotels and hospitalit
 - **Potential Value Field**: Added potentialValue field to contact creation/editing with automatic number-to-decimal conversion, enabling accurate pipeline value calculations
 - **Schema Improvements**: Enhanced insertContactSchema to accept numeric potential values from frontend and convert to decimal strings for database storage
 - **Branding**: Added RoomRoute logo to login page (large, centered) and dashboard header (small, upper right corner)
+- **Organization Archiving**: Super admin can now archive/restore organizations from Settings page. Archived organizations are blocked from user access via authentication middleware and hidden from organization switcher
 - **Quality Assurance**: Comprehensive end-to-end testing completed - all features working correctly
 
 ## User Preferences
@@ -25,6 +26,7 @@ RoomRoute is a comprehensive multi-tenant CRM designed for hotels and hospitalit
 - **Super Admin**: Master account (josh.gaddis@roomroute.org) with `role='super_admin'` can switch between all organizations using dropdown in header. Super admin has NULL organizationId and uses `currentOrganizationId` for context switching.
 - **Multi-User Support**: Each organization can have multiple users with role-based permissions (admin/user). Organization creator is auto-assigned as admin.
 - **Active Status Check**: Deactivated users (active=false in user_organizations) are blocked from all authenticated requests.
+- **Organization Archiving**: Organizations have an `active` boolean field (default true). Archived organizations (active=false) are blocked at authentication middleware level, preventing user access. Only super admin can archive/restore via Settings page "Danger Zone". Archived organizations are hidden from organization switcher dropdown.
 
 ### Frontend (React + Vite)
 - **Framework**: React with TypeScript
