@@ -482,6 +482,25 @@ export default function Deals() {
 
               <FormField
                 control={editForm.control}
+                name="actionDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Action Date *</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="date" 
+                        value={field.value ? (typeof field.value === 'string' ? (field.value as string).split('T')[0] : format(new Date(field.value as Date), "yyyy-MM-dd")) : format(new Date(), "yyyy-MM-dd")}
+                        onChange={(e) => field.onChange(e.target.value || null)}
+                        data-testid="input-edit-deal-action-date"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editForm.control}
                 name="stage"
                 render={({ field }) => (
                   <FormItem>
@@ -517,25 +536,6 @@ export default function Deals() {
                         value={field.value ? (typeof field.value === 'string' ? (field.value as string).split('T')[0] : format(new Date(field.value as Date), "yyyy-MM-dd")) : ""}
                         onChange={(e) => field.onChange(e.target.value || null)}
                         data-testid="input-edit-deal-close-date"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={editForm.control}
-                name="actionDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Action Date *</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="date" 
-                        value={field.value ? (typeof field.value === 'string' ? (field.value as string).split('T')[0] : format(new Date(field.value as Date), "yyyy-MM-dd")) : format(new Date(), "yyyy-MM-dd")}
-                        onChange={(e) => field.onChange(e.target.value || null)}
-                        data-testid="input-edit-deal-action-date"
                       />
                     </FormControl>
                     <FormMessage />
