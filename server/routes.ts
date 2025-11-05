@@ -236,6 +236,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Super Admin Roll-Up Stats
+  app.get("/api/admin/rollup-stats", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (user?.role !== "super_admin") {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      // Get all active organizations
+      const organizations = await storage.getAllOrganizations();
+      
+      // Aggregate deals across all organizations
+      const allDealsPromises = organizations.map(org => storage.getAllDeals(org.id));
+      const dealsArrays = await Promise.all(allDealsPromises);
+      const allDeals = dealsArrays.flat();
+      
+      // Aggregate contacts across all organizations
+      const allContactsPromises = organizations.map(org => storage.getAllContacts(org.id));
+      const contactsArrays = await Promise.all(allContactsPromises);
+      const allContacts = contactsArrays.flat();
+      
+      // Aggregate activities across all organizations
+      const allActivitiesPromises = organizations.map(org => storage.getAllActivities(org.id));
+      const activitiesArrays = await Promise.all(allActivitiesPromises);
+      const allActivities = activitiesArrays.flat();
+      
+      // Calculate pipeline stats
+      const pipelineStats = {
+        leads: {
+          count: allContacts.length,
+          value: allContacts.reduce((sum, c) => sum + Number(c.potentialValue || 0), 0)
+        },
+        qualified: {
+          count: allDeals.filter(d => d.stage.toLowerCase() === 'qualified').length,
+          value: allDeals.filter(d => d.stage.toLowerCase() === 'qualified').reduce((sum, d) => sum + Number(d.value || 0), 0)
+        },
+        proposal: {
+          count: allDeals.filter(d => d.stage.toLowerCase() === 'proposal').length,
+          value: allDeals.filter(d => d.stage.toLowerCase() === 'proposal').reduce((sum, d) => sum + Number(d.value || 0), 0)
+        },
+        negotiation: {
+          count: allDeals.filter(d => d.stage.toLowerCase() === 'negotiation').length,
+          value: allDeals.filter(d => d.stage.toLowerCase() === 'negotiation').reduce((sum, d) => sum + Number(d.value || 0), 0)
+        },
+        closed: {
+          count: allDeals.filter(d => d.stage.toLowerCase() === 'closed').length,
+          value: allDeals.filter(d => d.stage.toLowerCase() === 'closed').reduce((sum, d) => sum + Number(d.value || 0), 0)
+        }
+      };
+      
+      res.json({
+        activeHotels: organizations.length,
+        totalOutreachAttempts: allActivities.length,
+        pipeline: pipelineStats,
+      });
+    } catch (error) {
+      console.error("Error fetching rollup stats:", error);
+      res.status(500).json({ error: "Failed to fetch rollup statistics" });
+    }
+  });
+
   // Contact routes
   app.get("/api/contacts", isAuthenticated, async (req: any, res) => {
     try {

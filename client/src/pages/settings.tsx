@@ -116,6 +116,7 @@ export default function Settings() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/organization/profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/organizations"] });
       toast({
         title: "Success",
         description: organization?.active 

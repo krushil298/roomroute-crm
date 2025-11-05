@@ -11,6 +11,7 @@ import {
   Settings,
   UsersRound,
   Shield,
+  Globe,
 } from "lucide-react";
 import {
   Sidebar,
@@ -117,14 +118,24 @@ export function AppSidebar() {
                 </SidebarMenuItem>
               ))}
               {isSuperAdmin && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={location === "/admin"}>
-                    <Link href="/admin" data-testid="link-admin">
-                      <Shield className="h-4 w-4" />
-                      <span>Admin</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                <>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild isActive={location === "/admin-overview"}>
+                      <Link href="/admin-overview" data-testid="link-admin-overview">
+                        <Globe className="h-4 w-4" />
+                        <span>Overview</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild isActive={location === "/admin"}>
+                      <Link href="/admin" data-testid="link-admin">
+                        <Shield className="h-4 w-4" />
+                        <span>Admin</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </>
               )}
             </SidebarMenu>
           </SidebarGroupContent>

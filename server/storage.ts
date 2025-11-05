@@ -25,7 +25,7 @@ import {
   userOrganizations,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (required for Replit Auth)
@@ -337,7 +337,9 @@ export class DbStorage implements IStorage {
   
   // Activity operations
   async getAllActivities(organizationId: string): Promise<Activity[]> {
-    return await db.select().from(activities).where(eq(activities.organizationId, organizationId));
+    return await db.select().from(activities)
+      .where(eq(activities.organizationId, organizationId))
+      .orderBy(desc(activities.createdAt));
   }
   
   async getActivitiesByContact(contactId: string, organizationId: string): Promise<Activity[]> {

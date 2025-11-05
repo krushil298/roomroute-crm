@@ -156,8 +156,9 @@ export default function Dashboard() {
         contact: contacts.find(c => c.id === deal.contactId)?.leadOrProject || "Unknown",
       }));
 
-  // Create leads/contacts section for pipeline (use ALL contacts for total value)
+  // Create leads/contacts section for pipeline (filter out $0 value contacts)
   const leadContacts = contacts
+    .filter(contact => Number(contact.potentialValue || 0) > 0)
     .map(contact => ({
       id: contact.id,
       title: contact.leadOrProject,
