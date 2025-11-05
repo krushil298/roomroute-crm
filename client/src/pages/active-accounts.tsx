@@ -34,7 +34,7 @@ export default function ActiveAccounts() {
   });
 
   // Filter only closed deals
-  const closedDeals = allDeals.filter(deal => deal.stage.toLowerCase() === "closed");
+  const closedDeals = allDeals.filter(deal => deal.stage?.toLowerCase() === "closed");
 
   const editForm = useForm<ClientInsertDeal>({
     resolver: zodResolver(insertDealSchema),

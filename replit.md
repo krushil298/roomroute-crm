@@ -28,13 +28,14 @@ RoomRoute is a comprehensive multi-tenant CRM designed for hotels and hospitalit
 5. **Schema Update**: Added `contractUrl` field to deals table to store contract file paths
 
 ### Bug Fixes (November 5, 2025)
-Fixed 6 critical bugs:
+Fixed 7 critical bugs:
 1. **Deal Creation Validation**: Removed probability field completely from deals schema, forms (deals.tsx, pipeline.tsx), and all related validation
 2. **Date Picker Timezone Issue**: Fixed off-by-one day bug caused by timezone conversion. Now stores dates as raw yyyy-MM-dd strings and converts to Date objects only for ORM insertion
 3. **Team Invite Visibility**: Fixed invite button not showing for organization admins. Updated role check to include user.role === "admin" for org creators
 4. **Lead Pipeline Metric Mismatch**: Removed .slice(0,10) limit from dashboard calculation so Pipeline Overview shows total from ALL contacts, not just first 10
 5. **Outreach Activities Display**: Added comprehensive outreach history section in contact view details dialog with chronological timeline, timestamps, and descriptions
 6. **This Month KPI Clickability**: Changed onClick from undefined to navigate to /reports page when clicked
+7. **Object Storage Path Normalization**: Fixed critical bug in `normalizeObjectEntityPath` where leading slashes weren't stripped from URL pathname and PRIVATE_OBJECT_DIR, causing contract upload path normalization to fail. Added defensive validation in PUT /api/contracts to ensure only properly normalized /objects/... paths are persisted
 
 ### Previous Updates
 - **Bug Fixes**: Fixed outreach save with empty notes, super admin onboarding bypass, dashboard month-over-month metrics, pipeline overview showing leads correctly, and removed debug validation button from settings
