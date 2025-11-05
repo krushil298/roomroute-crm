@@ -25,7 +25,7 @@ import {
   userOrganizations,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, ne, sql } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (required for Replit Auth)
@@ -86,6 +86,9 @@ export interface IStorage {
   createEmailTemplate(template: InsertEmailTemplate): Promise<EmailTemplate>;
   updateEmailTemplate(id: string, organizationId: string, template: Partial<InsertEmailTemplate>): Promise<EmailTemplate | undefined>;
   deleteEmailTemplate(id: string, organizationId: string): Promise<void>;
+  
+  // Nuclear cleanup - deletes ALL data except Josh's super admin account
+  nuclearCleanup(): Promise<{ deleted: { activities: number, deals: number, contacts: number, contractTemplates: number, emailTemplates: number, userOrganizations: number, users: number, organizations: number } }>;
 }
 
 export class DbStorage implements IStorage {
@@ -430,6 +433,59 @@ export class DbStorage implements IStorage {
     await db.delete(emailTemplates).where(
       and(eq(emailTemplates.id, id), eq(emailTemplates.organizationId, organizationId))
     );
+  }
+  
+  async nuclearCleanup(): Promise<{ deleted: { activities: number, deals: number, contacts: number, contractTemplates: number, emailTemplates: number, userOrganizations: number, users: number, organizations: number } }> {
+    const SUPER_ADMIN_EMAIL = 'josh.gaddis@roomroute.org';
+    
+    console.log(`🚨 Starting nuclear cleanup - preserving only ${SUPER_ADMIN_EMAIL}`);
+    
+    const result = await db.transaction(async (tx) => {
+      const activitiesDeleted = await tx.delete(activities).returning();
+      console.log(`✅ Deleted ${activitiesDeleted.length} activities`);
+      
+      const dealsDeleted = await tx.delete(deals).returning();
+      console.log(`✅ Deleted ${dealsDeleted.length} deals`);
+      
+      const contactsDeleted = await tx.delete(contacts).returning();
+      console.log(`✅ Deleted ${contactsDeleted.length} contacts`);
+      
+      const contractTemplatesDeleted = await tx.delete(contractTemplates).returning();
+      console.log(`✅ Deleted ${contractTemplatesDeleted.length} contract templates`);
+      
+      const emailTemplatesDeleted = await tx.delete(emailTemplates).returning();
+      console.log(`✅ Deleted ${emailTemplatesDeleted.length} email templates`);
+      
+      const userOrgsDeleted = await tx.delete(userOrganizations).returning();
+      console.log(`✅ Deleted ${userOrgsDeleted.length} user-organization relationships`);
+      
+      const usersDeleted = await tx.delete(users)
+        .where(ne(users.email, SUPER_ADMIN_EMAIL))
+        .returning();
+      console.log(`✅ Deleted ${usersDeleted.length} users (preserved ${SUPER_ADMIN_EMAIL})`);
+      
+      const orgsDeleted = await tx.delete(organizations).returning();
+      console.log(`✅ Deleted ${orgsDeleted.length} organizations`);
+      
+      await tx.update(users)
+        .set({ currentOrganizationId: null })
+        .where(eq(users.email, SUPER_ADMIN_EMAIL));
+      console.log(`✅ Reset super admin currentOrganizationId to NULL`);
+      
+      return {
+        activities: activitiesDeleted.length,
+        deals: dealsDeleted.length,
+        contacts: contactsDeleted.length,
+        contractTemplates: contractTemplatesDeleted.length,
+        emailTemplates: emailTemplatesDeleted.length,
+        userOrganizations: userOrgsDeleted.length,
+        users: usersDeleted.length,
+        organizations: orgsDeleted.length,
+      };
+    });
+    
+    console.log(`✅ Nuclear cleanup completed:`, result);
+    return { deleted: result };
   }
 }
 

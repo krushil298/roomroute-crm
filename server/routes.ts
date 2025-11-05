@@ -333,6 +333,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // NUCLEAR CLEANUP - Super Admin Only - Deletes ALL data except Josh's super admin account
+  app.post("/api/admin/nuclear-cleanup", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (user?.role !== "super_admin") {
+        return res.status(403).json({ error: "Forbidden - Super admin only" });
+      }
+      
+      // Additional safety check - must provide confirmation key
+      if (req.body.confirmationKey !== "DELETE_EVERYTHING_EXCEPT_JOSH") {
+        return res.status(400).json({ error: "Confirmation key required" });
+      }
+
+      console.log("🚨 NUCLEAR CLEANUP INITIATED by", user.email);
+      
+      // Execute cleanup via storage method
+      const result = await storage.nuclearCleanup();
+      
+      console.log("✅ NUCLEAR CLEANUP COMPLETED:", result);
+      
+      res.json({ 
+        message: "Nuclear cleanup completed successfully", 
+        result 
+      });
+    } catch (error) {
+      console.error("❌ Nuclear cleanup failed:", error);
+      res.status(500).json({ error: "Failed to execute nuclear cleanup" });
+    }
+  });
+
   // Super Admin Roll-Up Stats
   app.get("/api/admin/rollup-stats", isAuthenticated, async (req: any, res) => {
     try {
