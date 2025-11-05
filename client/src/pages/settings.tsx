@@ -288,34 +288,11 @@ export default function Settings() {
           </CardContent>
         </Card>
 
-        <div className="flex justify-end gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              const errors = form.formState.errors;
-              const errorCount = Object.keys(errors).length;
-              if (errorCount > 0) {
-                const errorFields = Object.keys(errors).join(", ");
-                const firstErrorKey = Object.keys(errors)[0] as keyof typeof errors;
-                alert(`Form has ${errorCount} validation error(s) in: ${errorFields}\n\nFirst error: ${JSON.stringify(errors[firstErrorKey], null, 2)}`);
-              } else {
-                alert("Form is valid! All fields passed validation.");
-              }
-            }}
-          >
-            Check Validation
-          </Button>
+        <div className="flex justify-end">
           <Button
             type="submit"
             disabled={updateMutation.isPending}
             data-testid="button-save-settings"
-            onClick={(e) => {
-              console.log("Save button clicked!");
-              console.log("Form is valid:", form.formState.isValid);
-              console.log("Form errors:", form.formState.errors);
-              console.log("Mutation pending:", updateMutation.isPending);
-            }}
           >
             <Save className="h-4 w-4 mr-2" />
             {updateMutation.isPending ? "Saving..." : "Save Changes"}

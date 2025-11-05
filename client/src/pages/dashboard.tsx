@@ -4,7 +4,7 @@ import { QuickActions } from "@/components/quick-actions";
 import { PipelineStage } from "@/components/pipeline-stage";
 import { Users, TrendingUp, DollarSign, Activity as ActivityIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import type { Contact, Deal, Activity, Organization } from "@shared/schema";
 import { useLocation } from "wouter";
 
@@ -27,6 +27,64 @@ export default function Dashboard() {
     queryKey: ["/api/activities"],
   });
 
+  // Current month date range
+  const now = new Date();
+  const currentMonthStart = startOfMonth(now);
+  const currentMonthEnd = endOfMonth(now);
+  
+  // Previous month date range
+  const previousMonthStart = startOfMonth(subMonths(now, 1));
+  const previousMonthEnd = endOfMonth(subMonths(now, 1));
+
+  // Filter data for current and previous month
+  const currentMonthContacts = contacts.filter(c => {
+    const createdAt = new Date(c.createdAt);
+    return createdAt >= currentMonthStart && createdAt <= currentMonthEnd;
+  });
+
+  const previousMonthContacts = contacts.filter(c => {
+    const createdAt = new Date(c.createdAt);
+    return createdAt >= previousMonthStart && createdAt <= previousMonthEnd;
+  });
+
+  const currentMonthActivities = activities.filter(a => {
+    const createdAt = new Date(a.createdAt);
+    return createdAt >= currentMonthStart && createdAt <= currentMonthEnd;
+  });
+
+  const previousMonthActivities = activities.filter(a => {
+    const createdAt = new Date(a.createdAt);
+    return createdAt >= previousMonthStart && createdAt <= previousMonthEnd;
+  });
+
+  const currentMonthLeadPipeline = currentMonthContacts.reduce((sum, contact) => 
+    sum + Number(contact.potentialValue || 0), 0
+  );
+
+  const previousMonthLeadPipeline = previousMonthContacts.reduce((sum, contact) => 
+    sum + Number(contact.potentialValue || 0), 0
+  );
+
+  const currentMonthDealPipeline = deals
+    .filter(d => {
+      const createdAt = new Date(d.createdAt);
+      return createdAt >= currentMonthStart && createdAt <= currentMonthEnd;
+    })
+    .reduce((sum, deal) => sum + Number(deal.value), 0);
+
+  const previousMonthDealPipeline = deals
+    .filter(d => {
+      const createdAt = new Date(d.createdAt);
+      return createdAt >= previousMonthStart && createdAt <= previousMonthEnd;
+    })
+    .reduce((sum, deal) => sum + Number(deal.value), 0);
+
+  // Calculate percentage changes
+  const calculatePercentChange = (current: number, previous: number) => {
+    if (previous === 0) return 0;
+    return Math.round(((current - previous) / previous) * 100);
+  };
+
   const totalLeadPipeline = contacts.reduce((sum, contact) => 
     sum + Number(contact.potentialValue || 0), 0
   );
@@ -40,28 +98,40 @@ export default function Dashboard() {
       title: "Total Contacts",
       value: contacts.length,
       icon: Users,
-      trend: { value: 0, isPositive: true },
+      trend: { 
+        value: calculatePercentChange(currentMonthContacts.length, previousMonthContacts.length), 
+        isPositive: currentMonthContacts.length >= previousMonthContacts.length 
+      },
       onClick: () => setLocation("/contacts"),
     },
     {
       title: "Lead Pipeline",
       value: `$${(totalLeadPipeline / 1000).toFixed(0)}K`,
       icon: DollarSign,
-      trend: { value: 0, isPositive: true },
+      trend: { 
+        value: calculatePercentChange(currentMonthLeadPipeline, previousMonthLeadPipeline), 
+        isPositive: currentMonthLeadPipeline >= previousMonthLeadPipeline 
+      },
       onClick: () => setLocation("/contacts"),
     },
     {
       title: "Deal Pipeline",
       value: `$${(totalDealPipeline / 1000).toFixed(0)}K`,
       icon: TrendingUp,
-      trend: { value: 0, isPositive: true },
+      trend: { 
+        value: calculatePercentChange(currentMonthDealPipeline, previousMonthDealPipeline), 
+        isPositive: currentMonthDealPipeline >= previousMonthDealPipeline 
+      },
       onClick: () => setLocation("/deals"),
     },
     {
-      title: "This Week",
-      value: activities.length,
+      title: "This Month",
+      value: currentMonthActivities.length,
       icon: ActivityIcon,
-      trend: { value: 0, isPositive: true },
+      trend: { 
+        value: calculatePercentChange(currentMonthActivities.length, previousMonthActivities.length), 
+        isPositive: currentMonthActivities.length >= previousMonthActivities.length 
+      },
       onClick: undefined,
     },
   ];
@@ -71,7 +141,7 @@ export default function Dashboard() {
     .map((activity) => ({
       id: activity.id,
       type: activity.type as "call" | "email" | "meeting" | "note",
-      title: activity.description,
+      title: activity.description || "",
       contact: contacts.find(c => c.id === activity.contactId)?.leadOrProject || "Unknown",
       timestamp: formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true }),
     }));
@@ -86,10 +156,20 @@ export default function Dashboard() {
         contact: contacts.find(c => c.id === deal.contactId)?.leadOrProject || "Unknown",
       }));
 
+  // Create leads/contacts section for pipeline
+  const leadContacts = contacts
+    .slice(0, 10)
+    .map(contact => ({
+      id: contact.id,
+      title: contact.leadOrProject,
+      value: Number(contact.potentialValue || 0),
+      contact: contact.primaryContact || contact.company || "No contact",
+    }));
+
   const pipelineData = [
     {
-      stage: "Lead",
-      deals: dealsByStage("lead"),
+      stage: "Leads",
+      deals: leadContacts,
       color: "blue",
     },
     {
