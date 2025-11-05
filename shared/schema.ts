@@ -164,13 +164,15 @@ export const activities = pgTable("activities", {
   contactId: varchar("contact_id").references(() => contacts.id),
   dealId: varchar("deal_id").references(() => deals.id),
   type: text("type").notNull(),
-  description: text("description").notNull(),
+  description: text("description"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const insertActivitySchema = createInsertSchema(activities).omit({
   id: true,
   createdAt: true,
+}).extend({
+  description: z.string().optional(),
 });
 
 export type InsertActivity = z.infer<typeof insertActivitySchema>;
