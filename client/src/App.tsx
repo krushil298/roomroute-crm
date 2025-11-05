@@ -18,6 +18,7 @@ import Calculator from "@/pages/calculator";
 import Import from "@/pages/import";
 import Settings from "@/pages/settings";
 import Reports from "@/pages/reports";
+import Team from "@/pages/team";
 import Landing from "@/pages/landing";
 import Onboarding from "@/pages/onboarding";
 import NotFound from "@/pages/not-found";
@@ -39,6 +40,7 @@ function AuthenticatedRouter() {
       <Route path="/calculator" component={Calculator} />
       <Route path="/import" component={Import} />
       <Route path="/reports" component={Reports} />
+      <Route path="/team" component={Team} />
       <Route path="/settings" component={Settings} />
       <Route component={NotFound} />
     </Switch>

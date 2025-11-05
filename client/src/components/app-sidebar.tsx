@@ -8,6 +8,7 @@ import {
   FileText,
   BarChart3,
   Settings,
+  UsersRound,
 } from "lucide-react";
 import {
   Sidebar,
@@ -64,6 +65,11 @@ const menuItems = [
     title: "Reports",
     url: "/reports",
     icon: BarChart3,
+  },
+  {
+    title: "Team",
+    url: "/team",
+    icon: UsersRound,
   },
   {
     title: "Settings",
