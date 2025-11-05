@@ -32,7 +32,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      let user = await storage.getUser(userId);
+      
+      // For super admins, check if their currentOrganizationId points to an archived org
+      if (user?.role === "super_admin" && user.currentOrganizationId) {
+        const currentOrg = await storage.getOrganization(user.currentOrganizationId);
+        
+        // If current org is archived, switch to first active org
+        if (currentOrg && currentOrg.active === false) {
+          const activeOrgs = await storage.getAllOrganizations();
+          if (activeOrgs.length > 0) {
+            await storage.updateUserCurrentOrg(userId, activeOrgs[0].id);
+            user = await storage.getUser(userId);
+          } else {
+            // No active orgs available, clear currentOrganizationId
+            await storage.updateUserCurrentOrg(userId, '');
+            user = await storage.getUser(userId);
+          }
+        }
+      }
+      
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
