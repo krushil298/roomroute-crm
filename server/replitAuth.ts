@@ -161,6 +161,12 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
           if (membership && !membership.active) {
             return res.status(403).json({ message: "Account deactivated" });
           }
+
+          // Check if organization is archived
+          const org = await storage.getOrganization(orgId);
+          if (org && !org.active) {
+            return res.status(403).json({ message: "Organization is archived" });
+          }
         }
       }
     }

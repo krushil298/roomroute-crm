@@ -10,8 +10,19 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { Organization } from "@shared/schema";
-import { Building2, Save } from "lucide-react";
+import type { Organization, User } from "@shared/schema";
+import { Building2, Save, Archive, ArchiveRestore } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const organizationProfileSchema = z.object({
   name: z.string().min(1, "Hotel name is required"),
@@ -45,6 +56,10 @@ export default function Settings() {
 
   const { data: organization, isLoading } = useQuery<Organization>({
     queryKey: ["/api/organization/profile"],
+  });
+
+  const { data: user } = useQuery<User>({
+    queryKey: ["/api/user"],
   });
 
   const form = useForm<OrganizationProfile>({
@@ -93,6 +108,29 @@ export default function Settings() {
     console.log("Form errors:", form.formState.errors);
     updateMutation.mutate(data);
   };
+
+  const archiveMutation = useMutation({
+    mutationFn: async (active: boolean) => {
+      if (!organization?.id) throw new Error("No organization ID");
+      return await apiRequest("PATCH", `/api/admin/organizations/${organization.id}/archive`, { active });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/organization/profile"] });
+      toast({
+        title: "Success",
+        description: organization?.active 
+          ? "Hotel has been archived. Users will no longer be able to access it." 
+          : "Hotel has been restored and is now active.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update organization status",
+        variant: "destructive",
+      });
+    },
+  });
 
   if (isLoading) {
     return (
@@ -299,6 +337,61 @@ export default function Settings() {
           </Button>
         </div>
       </form>
+
+      {user?.role === "super_admin" && organization && (
+        <Card className="border-destructive/50">
+          <CardHeader>
+            <CardTitle className="text-destructive">Danger Zone</CardTitle>
+            <CardDescription>
+              Archive this organization to prevent users from accessing it
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button 
+                  variant={organization.active ? "destructive" : "default"}
+                  data-testid="button-archive-organization"
+                >
+                  {organization.active ? (
+                    <>
+                      <Archive className="h-4 w-4 mr-2" />
+                      Archive Organization
+                    </>
+                  ) : (
+                    <>
+                      <ArchiveRestore className="h-4 w-4 mr-2" />
+                      Restore Organization
+                    </>
+                  )}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    {organization.active ? "Archive Organization?" : "Restore Organization?"}
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {organization.active 
+                      ? "This will prevent all users from accessing this organization. The organization will be hidden from the organization switcher and users won't be able to log in. You can restore it later."
+                      : "This will restore access to this organization. Users will be able to log in and the organization will appear in the organization switcher."
+                    }
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel data-testid="button-cancel-archive">Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => archiveMutation.mutate(!organization.active)}
+                    data-testid="button-confirm-archive"
+                  >
+                    {organization.active ? "Archive" : "Restore"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

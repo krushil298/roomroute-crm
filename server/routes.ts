@@ -212,6 +212,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/admin/organizations/:id/archive", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (user?.role !== "super_admin") {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      
+      const { active } = req.body;
+      if (typeof active !== "boolean") {
+        return res.status(400).json({ error: "Active status required (boolean)" });
+      }
+
+      const org = await storage.updateOrganization(req.params.id, { active });
+      if (!org) {
+        return res.status(404).json({ error: "Organization not found" });
+      }
+
+      res.json({ message: "Organization status updated", organization: org });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update organization status" });
+    }
+  });
+
   // Contact routes
   app.get("/api/contacts", isAuthenticated, async (req: any, res) => {
     try {

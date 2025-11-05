@@ -166,7 +166,7 @@ export class DbStorage implements IStorage {
   }
 
   async getAllOrganizations(): Promise<Organization[]> {
-    return await db.select().from(organizations);
+    return await db.select().from(organizations).where(eq(organizations.active, true));
   }
 
   // User-Organization operations

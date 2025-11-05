@@ -48,6 +48,7 @@ export type InsertUserOrganization = typeof userOrganizations.$inferInsert;
 export const organizations = pgTable("organizations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
+  active: boolean("active").notNull().default(true), // Archive capability
   // Hotel Profile Information
   numberOfRooms: integer("number_of_rooms"),
   address: text("address"),
