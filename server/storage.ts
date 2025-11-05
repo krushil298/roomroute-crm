@@ -37,6 +37,7 @@ export interface IStorage {
   // Organization operations
   getOrganization(id: string): Promise<Organization | undefined>;
   getAllOrganizations(): Promise<Organization[]>;
+  getAllOrganizationsIncludingArchived(): Promise<Organization[]>;
   createOrganization(org: InsertOrganization): Promise<Organization>;
   updateOrganization(id: string, data: Partial<Organization>): Promise<Organization | undefined>;
   updateUserOrganization(userId: string, organizationId: string): Promise<User | undefined>;
@@ -44,8 +45,10 @@ export interface IStorage {
   // User-Organization operations (multi-tenant)
   getUserOrganizations(userId: string): Promise<UserOrganization[]>;
   getOrganizationUsers(organizationId: string): Promise<any[]>; // Returns joined data with user details
+  getDeactivatedUsers(): Promise<any[]>; // Returns all deactivated users across all orgs
   addUserToOrganization(data: InsertUserOrganization): Promise<UserOrganization>;
   removeUserFromOrganization(userId: string, organizationId: string): Promise<void>;
+  updateUserOrganizationStatus(userId: string, organizationId: string, active: boolean): Promise<any>;
   
   // Contact operations (filtered by organization)
   getAllContacts(organizationId: string): Promise<Contact[]>;
@@ -169,6 +172,10 @@ export class DbStorage implements IStorage {
     return await db.select().from(organizations).where(eq(organizations.active, true));
   }
 
+  async getAllOrganizationsIncludingArchived(): Promise<Organization[]> {
+    return await db.select().from(organizations);
+  }
+
   // User-Organization operations
   async getUserOrganizations(userId: string): Promise<UserOrganization[]> {
     return await db.select().from(userOrganizations).where(eq(userOrganizations.userId, userId));
@@ -205,6 +212,35 @@ export class DbStorage implements IStorage {
       .where(
         and(eq(userOrganizations.userId, userId), eq(userOrganizations.organizationId, organizationId))
       );
+  }
+
+  async getDeactivatedUsers(): Promise<any[]> {
+    const results = await db
+      .select({
+        userId: userOrganizations.userId,
+        organizationId: userOrganizations.organizationId,
+        role: userOrganizations.role,
+        active: userOrganizations.active,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        orgName: organizations.name,
+      })
+      .from(userOrganizations)
+      .leftJoin(users, eq(userOrganizations.userId, users.id))
+      .leftJoin(organizations, eq(userOrganizations.organizationId, organizations.id))
+      .where(eq(userOrganizations.active, false));
+    
+    return results;
+  }
+
+  async updateUserOrganizationStatus(userId: string, organizationId: string, active: boolean): Promise<any> {
+    await db.update(userOrganizations)
+      .set({ active })
+      .where(
+        and(eq(userOrganizations.userId, userId), eq(userOrganizations.organizationId, organizationId))
+      );
+    return { success: true };
   }
   
   // Contact operations

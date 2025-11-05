@@ -20,6 +20,7 @@ import Import from "@/pages/import";
 import Settings from "@/pages/settings";
 import Reports from "@/pages/reports";
 import Team from "@/pages/team";
+import AdminManagement from "@/pages/admin-management";
 import Landing from "@/pages/landing";
 import Onboarding from "@/pages/onboarding";
 import NotFound from "@/pages/not-found";
@@ -44,6 +45,7 @@ function AuthenticatedRouter() {
       <Route path="/import" component={Import} />
       <Route path="/reports" component={Reports} />
       <Route path="/team" component={Team} />
+      <Route path="/admin" component={AdminManagement} />
       <Route path="/settings" component={Settings} />
       <Route component={NotFound} />
     </Switch>

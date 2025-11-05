@@ -802,6 +802,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin Management Routes (Super Admin Only)
+  app.get("/api/admin/all-organizations", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      // Only super admins can access this
+      if (user?.role !== "super_admin") {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      const orgs = await storage.getAllOrganizationsIncludingArchived();
+      res.json(orgs);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch organizations" });
+    }
+  });
+
+  app.get("/api/admin/deactivated-users", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      // Only super admins can access this
+      if (user?.role !== "super_admin") {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      const deactivatedUsers = await storage.getDeactivatedUsers();
+      res.json(deactivatedUsers);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch deactivated users" });
+    }
+  });
+
+  app.patch("/api/admin/organizations/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      // Only super admins can access this
+      if (user?.role !== "super_admin") {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      const org = await storage.updateOrganization(req.params.id, req.body);
+      if (!org) {
+        return res.status(404).json({ error: "Organization not found" });
+      }
+      res.json(org);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update organization" });
+    }
+  });
+
+  app.patch("/api/admin/users/:userId/organizations/:orgId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      // Only super admins can access this
+      if (user?.role !== "super_admin") {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      const result = await storage.updateUserOrganizationStatus(
+        req.params.userId,
+        req.params.orgId,
+        req.body.active
+      );
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update user status" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;

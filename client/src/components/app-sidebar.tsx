@@ -10,6 +10,7 @@ import {
   BarChart3,
   Settings,
   UsersRound,
+  Shield,
 } from "lucide-react";
 import {
   Sidebar,
@@ -96,6 +97,8 @@ export function AppSidebar() {
     ? `${user.firstName} ${user.lastName}`
     : user?.email || "User";
 
+  const isSuperAdmin = user?.role === "super_admin";
+
   return (
     <Sidebar>
       <SidebarContent>
@@ -113,6 +116,16 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              {isSuperAdmin && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={location === "/admin"}>
+                    <Link href="/admin" data-testid="link-admin">
+                      <Shield className="h-4 w-4" />
+                      <span>Admin</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
