@@ -14,7 +14,10 @@ RoomRoute is a comprehensive multi-tenant CRM designed for hotels and hospitalit
 ### Multi-Tenancy and Authentication
 - **Complete data isolation**: Each organization has separate login credentials and data access. All data tables include `organizationId` foreign keys with server-side enforcement.
 - **Authentication**: Replit Auth (OIDC) supporting Google, GitHub, and email/password. Features a landing page for unauthenticated users and an onboarding flow for new users to create an organization on first login. Session management is PostgreSQL-backed.
-- **Security**: `organizationId` is always set server-side from the authenticated session to prevent data isolation breaches.
+- **Security**: `organizationId` is always set server-side via `getEffectiveOrgId()` helper to prevent data isolation breaches.
+- **Super Admin**: Master account (josh.gaddis@roomroute.org) with `role='super_admin'` can switch between all organizations using dropdown in header. Super admin has NULL organizationId and uses `currentOrganizationId` for context switching.
+- **Multi-User Support**: Each organization can have multiple users with role-based permissions (admin/user). Organization creator is auto-assigned as admin.
+- **Active Status Check**: Deactivated users (active=false in user_organizations) are blocked from all authenticated requests.
 
 ### Frontend (React + Vite)
 - **Framework**: React with TypeScript
@@ -44,10 +47,12 @@ RoomRoute is a comprehensive multi-tenant CRM designed for hotels and hospitalit
     - **Deal Pipeline Report**: Closed deals and total revenue by date range
     - **Lapsed Contacts Report**: Shows days since last contact for each lead, highlighting leads lapsed 30+ and 60+ days
 - **Dashboard**: Displays KPI metrics (Total Contacts, Active Deals, Pipeline Value, Weekly Activity), recent activity feed, pipeline overview, and quick actions.
+- **Team Management**: Admin users can invite team members via email, assign roles (user/admin), and deactivate users. Features soft delete (sets active=false) to preserve data while revoking access. Team page shows all members with their role, status, and activity.
 
 ### Database Schema Highlights
 - `organizations`: Root entity for multi-tenancy.
-- `users`: Stores user details linked to an organization.
+- `users`: Stores user details with `organizationId` (primary org) and `currentOrganizationId` (for super_admin switching). Includes `role` field (user/admin/super_admin).
+- `user_organizations`: Junction table for multi-user support. Fields: userId, organizationId, role (user/admin), active (boolean for soft delete).
 - `contacts`: Stores lead/customer data including `lead_or_project`, `segment`, `company`, `primary_contact`, `email`, `phone`, `est_room_nights`, and `organization_id`.
 - `deals`, `activities`, `contract_templates`, `email_templates`: All include `organization_id` for data isolation.
 
