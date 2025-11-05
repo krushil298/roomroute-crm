@@ -171,6 +171,7 @@ export const activities = pgTable("activities", {
 export const insertActivitySchema = createInsertSchema(activities).omit({
   id: true,
   createdAt: true,
+  organizationId: true,
 }).extend({
   description: z.string().optional(),
 });

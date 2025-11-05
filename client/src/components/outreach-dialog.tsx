@@ -54,11 +54,14 @@ export function OutreachDialog({ open, onOpenChange, contact }: OutreachDialogPr
 
       // Save each attempt as an activity with proper type
       for (const attempt of validAttempts) {
+        const description = attempt.notes 
+          ? `${attempt.method}: ${attempt.notes}` 
+          : attempt.method;
+        
         await apiRequest("POST", "/api/activities", {
           contactId: contact.id,
           type: mapMethodToActivityType(attempt.method),
-          description: `${attempt.method}: ${attempt.notes}`,
-          date: new Date(attempt.date).toISOString(),
+          description,
         });
       }
 
@@ -68,7 +71,6 @@ export function OutreachDialog({ open, onOpenChange, contact }: OutreachDialogPr
           contactId: contact.id,
           type: "note",
           description: additionalNotes,
-          date: new Date().toISOString(),
         });
       }
     },
