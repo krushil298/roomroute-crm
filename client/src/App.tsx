@@ -52,8 +52,9 @@ function Router() {
     return <Landing />;
   }
 
-  // Show onboarding if user doesn't have an organization
-  if (!user?.organizationId) {
+  // Super admins don't need an organization - skip onboarding
+  // Regular users need an organization
+  if (!user?.organizationId && user?.role !== "super_admin") {
     return <Onboarding />;
   }
 
