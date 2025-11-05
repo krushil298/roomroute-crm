@@ -5,8 +5,19 @@ RoomRoute is a comprehensive multi-tenant CRM designed for hotels and hospitalit
 
 ## Recent Updates (November 2025) - Ready for Production
 
-### Latest Bug Fixes (November 5, 2025)
-Fixed 6 critical bugs reported by user:
+### Latest Features (November 5, 2025)
+**Deal Editing and Active Accounts Management**:
+1. **Deal Editing**: Deals in the pipeline are now clickable, opening an edit dialog to update deal details (title, value, stage, contact, close date)
+2. **Active Accounts Page**: New dedicated page for managing closed deals (won business). When a deal stage is set to "closed", it automatically moves from the pipeline to Active Accounts
+3. **Contract Upload**: Closed deals in Active Accounts can store signed contract URLs (Google Drive, Dropbox, etc.) for easy reference
+4. **Deal Lifecycle Management**: 
+   - Closed deals appear only in Active Accounts (removed from pipeline)
+   - Reopen action moves deals back to "Qualified" stage in pipeline
+   - Edit, Upload Contract, and Reopen actions available for each active account
+5. **Schema Update**: Added `contractUrl` field to deals table to store signed contract links
+
+### Bug Fixes (November 5, 2025)
+Fixed 6 critical bugs:
 1. **Deal Creation Validation**: Removed probability field completely from deals schema, forms (deals.tsx, pipeline.tsx), and all related validation
 2. **Date Picker Timezone Issue**: Fixed off-by-one day bug caused by timezone conversion. Now stores dates as raw yyyy-MM-dd strings and converts to Date objects only for ORM insertion
 3. **Team Invite Visibility**: Fixed invite button not showing for organization admins. Updated role check to include user.role === "admin" for org creators
@@ -54,7 +65,8 @@ Fixed 6 critical bugs reported by user:
 
 ### Core Features
 - **Contact Management**: CRUD operations for contacts, with search and filter capabilities. Contact cards display relevant information. Clickable contact names open outreach tracking dialog.
-- **Deal Pipeline**: Tracks sales opportunities through stages (Lead → Qualified → Proposal → Negotiation → Closed) with value tracking. Visual pipeline overview on the dashboard.
+- **Deal Pipeline**: Tracks sales opportunities through stages (Lead → Qualified → Proposal → Negotiation) with value tracking. Visual pipeline overview on the dashboard. Deals are clickable to edit details. Closed deals automatically move to Active Accounts.
+- **Active Accounts**: Dedicated page for managing closed/won deals. Features include editing account details, uploading signed contract URLs, and reopening deals back to pipeline if needed. Shows total value of all active accounts.
 - **Lead Import**: Supports bulk import via CSV and Excel (.xlsx) files or copy-paste. Features intelligent column mapping and validation for hospitality-specific fields like `lead_or_project`, `segment`, and `est_room_nights`.
 - **Template Management**:
     - **Contract Templates**: Create, edit, and use LNR (Long-term rental) and Group contract templates.
@@ -74,7 +86,8 @@ Fixed 6 critical bugs reported by user:
 - `users`: Stores user details with `organizationId` (primary org) and `currentOrganizationId` (for super_admin switching). Includes `role` field (user/admin/super_admin).
 - `user_organizations`: Junction table for multi-user support. Fields: userId, organizationId, role (user/admin), active (boolean for soft delete).
 - `contacts`: Stores lead/customer data including `lead_or_project`, `segment`, `company`, `primary_contact`, `email`, `phone`, `est_room_nights`, and `organization_id`.
-- `deals`, `activities`, `contract_templates`, `email_templates`: All include `organization_id` for data isolation.
+- `deals`: Tracks sales opportunities with fields: `title`, `value`, `stage`, `expectedCloseDate`, `contactUrl` (for signed contracts), and `organization_id` for data isolation.
+- `activities`, `contract_templates`, `email_templates`: All include `organization_id` for data isolation.
 
 ## External Dependencies
 - **Replit Auth (OIDC)**: For user authentication.
