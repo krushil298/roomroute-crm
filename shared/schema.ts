@@ -154,7 +154,6 @@ export const deals = pgTable("deals", {
   title: text("title").notNull(),
   value: decimal("value", { precision: 10, scale: 2 }).notNull(),
   stage: text("stage").notNull().default("lead"),
-  probability: integer("probability").notNull().default(0),
   expectedCloseDate: timestamp("expected_close_date"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

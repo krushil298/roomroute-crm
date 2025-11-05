@@ -1,10 +1,12 @@
 import { ContactCard } from "@/components/contact-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Clock } from "lucide-react";
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import type { Contact, InsertContact } from "@shared/schema";
+import type { Contact, InsertContact, Activity } from "@shared/schema";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatDistanceToNow } from "date-fns";
 import {
   Dialog,
   DialogContent,
@@ -66,6 +68,10 @@ export default function Contacts() {
 
   const { data: contacts = [], isLoading } = useQuery<Contact[]>({
     queryKey: ["/api/contacts"],
+  });
+
+  const { data: activities = [] } = useQuery<Activity[]>({
+    queryKey: ["/api/activities"],
   });
 
   const form = useForm<ClientContact>({
@@ -429,6 +435,44 @@ export default function Contacts() {
                   </FormItem>
                 )}
               />
+
+              {selectedContact && !isEditMode && (
+                <Card className="mt-4">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Clock className="h-4 w-4" />
+                      Outreach History
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {activities
+                      .filter(a => a.contactId === selectedContact.id)
+                      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                      .length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No outreach attempts recorded yet.</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {activities
+                          .filter(a => a.contactId === selectedContact.id)
+                          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                          .map(activity => (
+                            <div key={activity.id} className="flex items-start gap-3 pb-3 border-b last:border-0">
+                              <div className="flex-1">
+                                <p className="text-sm font-medium capitalize">{activity.type}</p>
+                                {activity.description && (
+                                  <p className="text-sm text-muted-foreground mt-1">{activity.description}</p>
+                                )}
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true })}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
 
               <div className="flex justify-end gap-3">
                 {selectedContact && !isEditMode && (

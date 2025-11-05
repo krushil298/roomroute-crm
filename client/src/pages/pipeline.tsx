@@ -33,7 +33,6 @@ export default function Pipeline() {
       title: "",
       value: "0.00",
       stage: "qualified",
-      probability: 50,
       contactId: null,
       expectedCloseDate: null,
     },
@@ -206,28 +205,6 @@ export default function Pipeline() {
 
               <FormField
                 control={form.control}
-                name="probability"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Probability (%) *</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number" 
-                        min="0"
-                        max="100"
-                        placeholder="50" 
-                        {...field} 
-                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                        data-testid="input-deal-probability"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
                 name="expectedCloseDate"
                 render={({ field }) => (
                   <FormItem>
@@ -235,9 +212,8 @@ export default function Pipeline() {
                     <FormControl>
                       <Input 
                         type="date" 
-                        {...field} 
-                        value={field.value ? format(new Date(field.value), "yyyy-MM-dd") : ""}
-                        onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : null)}
+                        value={field.value ? (typeof field.value === 'string' ? (field.value as string).split('T')[0] : format(new Date(field.value as Date), "yyyy-MM-dd")) : ""}
+                        onChange={(e) => field.onChange(e.target.value || null)}
                         data-testid="input-deal-close-date"
                       />
                     </FormControl>

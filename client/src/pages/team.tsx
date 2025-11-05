@@ -122,7 +122,7 @@ export default function Team() {
     inviteMutation.mutate();
   };
 
-  const isUserAdmin = teamMembers?.find(m => m.userId === user?.id)?.role === "admin";
+  const isUserAdmin = user?.role === "super_admin" || teamMembers?.find(m => m.userId === user?.id)?.role === "admin";
 
   return (
     <div className="container mx-auto p-6 space-y-6">

@@ -132,7 +132,7 @@ export default function Dashboard() {
         value: calculatePercentChange(currentMonthActivities.length, previousMonthActivities.length), 
         isPositive: currentMonthActivities.length >= previousMonthActivities.length 
       },
-      onClick: undefined,
+      onClick: () => setLocation("/reports"),
     },
   ];
 
@@ -156,9 +156,8 @@ export default function Dashboard() {
         contact: contacts.find(c => c.id === deal.contactId)?.leadOrProject || "Unknown",
       }));
 
-  // Create leads/contacts section for pipeline
+  // Create leads/contacts section for pipeline (use ALL contacts for total value)
   const leadContacts = contacts
-    .slice(0, 10)
     .map(contact => ({
       id: contact.id,
       title: contact.leadOrProject,
