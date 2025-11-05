@@ -24,6 +24,7 @@ import Onboarding from "@/pages/onboarding";
 import NotFound from "@/pages/not-found";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
+import logoUrl from "@assets/image_1762307821152.png";
 
 function AuthenticatedRouter() {
   const handleLogout = () => {
@@ -82,6 +83,12 @@ function Router() {
               <OrganizationSwitcher />
             </div>
             <div className="flex items-center gap-4">
+              <img 
+                src={logoUrl} 
+                alt="RoomRoute Logo" 
+                className="h-8 w-auto"
+                data-testid="img-header-logo"
+              />
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground" data-testid="text-user-name">
                   {user.firstName || user.email}

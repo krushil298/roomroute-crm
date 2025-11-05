@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, TrendingUp, Calendar, Mail } from "lucide-react";
+import logoUrl from "@assets/image_1762307821152.png";
 
 export default function Landing() {
   const handleLogin = () => {
@@ -13,6 +14,14 @@ export default function Landing() {
         <div className="max-w-6xl mx-auto">
           {/* Hero Section */}
           <div className="text-center mb-16">
+            <div className="flex justify-center mb-6">
+              <img 
+                src={logoUrl} 
+                alt="RoomRoute Logo" 
+                className="h-32 w-auto"
+                data-testid="img-logo"
+              />
+            </div>
             <h1 className="text-5xl font-bold mb-2" data-testid="text-title">
               RoomRoute
             </h1>

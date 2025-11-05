@@ -7,6 +7,7 @@ RoomRoute is a comprehensive multi-tenant CRM designed for hotels and hospitalit
 - **Bug Fixes**: Fixed 6 critical bugs including outreach save with empty notes, super admin onboarding bypass, dashboard month-over-month metrics, pipeline overview showing leads correctly, and removed debug validation button from settings
 - **Potential Value Field**: Added potentialValue field to contact creation/editing with automatic number-to-decimal conversion, enabling accurate pipeline value calculations
 - **Schema Improvements**: Enhanced insertContactSchema to accept numeric potential values from frontend and convert to decimal strings for database storage
+- **Branding**: Added RoomRoute logo to login page (large, centered) and dashboard header (small, upper right corner)
 
 ## User Preferences
 - Clean, minimal design inspired by Linear and Notion
