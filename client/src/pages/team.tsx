@@ -122,7 +122,9 @@ export default function Team() {
     inviteMutation.mutate();
   };
 
-  const isUserAdmin = user?.role === "super_admin" || teamMembers?.find(m => m.userId === user?.id)?.role === "admin";
+  // User is admin if they are super_admin OR if they are an admin in their current organization
+  // Note: Organization creators are automatically admins
+  const isUserAdmin = user?.role === "super_admin" || user?.role === "admin" || teamMembers?.find(m => m.userId === user?.id)?.role === "admin";
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -188,7 +190,7 @@ export default function Team() {
               <Button
                 type="submit"
                 disabled={inviteMutation.isPending || !email}
-                data-testid="button-send-invite"
+                data-testid="button-invite-team"
               >
                 <UserPlus className="h-4 w-4 mr-2" />
                 Send Invitation

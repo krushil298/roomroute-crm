@@ -430,10 +430,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "No organization" });
       }
       const validated = insertDealSchema.parse(req.body);
-      const deal = await storage.createDeal({
+      
+      // Convert expectedCloseDate string to Date if present
+      const dealData = {
         ...validated,
         organizationId: orgId,
-      });
+        expectedCloseDate: validated.expectedCloseDate 
+          ? (typeof validated.expectedCloseDate === 'string' 
+              ? new Date(validated.expectedCloseDate) 
+              : validated.expectedCloseDate)
+          : null,
+      };
+      
+      const deal = await storage.createDeal(dealData);
       res.status(201).json(deal);
     } catch (error) {
       res.status(400).json({ error: "Invalid deal data" });
@@ -448,7 +457,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!orgId) {
         return res.status(403).json({ error: "No organization" });
       }
-      const deal = await storage.updateDeal(req.params.id, orgId, req.body);
+      
+      // Convert expectedCloseDate string to Date if present
+      const updateData = {
+        ...req.body,
+        expectedCloseDate: req.body.expectedCloseDate !== undefined
+          ? (req.body.expectedCloseDate === null 
+              ? null 
+              : (typeof req.body.expectedCloseDate === 'string' 
+                  ? new Date(req.body.expectedCloseDate) 
+                  : req.body.expectedCloseDate))
+          : undefined,
+      };
+      
+      const deal = await storage.updateDeal(req.params.id, orgId, updateData);
       if (!deal) {
         return res.status(404).json({ error: "Deal not found" });
       }

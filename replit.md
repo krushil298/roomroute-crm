@@ -4,7 +4,18 @@
 RoomRoute is a comprehensive multi-tenant CRM designed for hotels and hospitality businesses. It provides complete data isolation between organizations, manages contacts and deals, tracks activities, and offers sales pipeline management. Key capabilities include contract and email templating, lead import functionality, and robust revenue tracking with potential value calculations. The project aims to streamline CRM processes for the hospitality sector.
 
 ## Recent Updates (November 2025) - Ready for Production
-- **Bug Fixes**: Fixed 6 critical bugs including outreach save with empty notes, super admin onboarding bypass, dashboard month-over-month metrics, pipeline overview showing leads correctly, and removed debug validation button from settings
+
+### Latest Bug Fixes (November 5, 2025)
+Fixed 6 critical bugs reported by user:
+1. **Deal Creation Validation**: Removed probability field completely from deals schema, forms (deals.tsx, pipeline.tsx), and all related validation
+2. **Date Picker Timezone Issue**: Fixed off-by-one day bug caused by timezone conversion. Now stores dates as raw yyyy-MM-dd strings and converts to Date objects only for ORM insertion
+3. **Team Invite Visibility**: Fixed invite button not showing for organization admins. Updated role check to include user.role === "admin" for org creators
+4. **Lead Pipeline Metric Mismatch**: Removed .slice(0,10) limit from dashboard calculation so Pipeline Overview shows total from ALL contacts, not just first 10
+5. **Outreach Activities Display**: Added comprehensive outreach history section in contact view details dialog with chronological timeline, timestamps, and descriptions
+6. **This Month KPI Clickability**: Changed onClick from undefined to navigate to /reports page when clicked
+
+### Previous Updates
+- **Bug Fixes**: Fixed outreach save with empty notes, super admin onboarding bypass, dashboard month-over-month metrics, pipeline overview showing leads correctly, and removed debug validation button from settings
 - **Potential Value Field**: Added potentialValue field to contact creation/editing with automatic number-to-decimal conversion, enabling accurate pipeline value calculations
 - **Schema Improvements**: Enhanced insertContactSchema to accept numeric potential values from frontend and convert to decimal strings for database storage
 - **Branding**: Added RoomRoute logo to login page (large, centered) and dashboard header (small, upper right corner)
@@ -43,7 +54,7 @@ RoomRoute is a comprehensive multi-tenant CRM designed for hotels and hospitalit
 
 ### Core Features
 - **Contact Management**: CRUD operations for contacts, with search and filter capabilities. Contact cards display relevant information. Clickable contact names open outreach tracking dialog.
-- **Deal Pipeline**: Tracks sales opportunities through stages (Lead → Qualified → Proposal → Negotiation → Closed) with value and probability tracking. Visual pipeline overview on the dashboard.
+- **Deal Pipeline**: Tracks sales opportunities through stages (Lead → Qualified → Proposal → Negotiation → Closed) with value tracking. Visual pipeline overview on the dashboard.
 - **Lead Import**: Supports bulk import via CSV and Excel (.xlsx) files or copy-paste. Features intelligent column mapping and validation for hospitality-specific fields like `lead_or_project`, `segment`, and `est_room_nights`.
 - **Template Management**:
     - **Contract Templates**: Create, edit, and use LNR (Long-term rental) and Group contract templates.

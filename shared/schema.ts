@@ -160,6 +160,7 @@ export const deals = pgTable("deals", {
 
 // Client schema - used by frontend (organizationId omitted for security)
 // Coerce value to accept number/string and convert to proper decimal string
+// Accept both string (yyyy-MM-dd) and Date for expectedCloseDate
 export const insertDealSchema = createInsertSchema(deals)
   .omit({
     id: true,
@@ -172,6 +173,7 @@ export const insertDealSchema = createInsertSchema(deals)
       const num = Number(val);
       return isNaN(num) ? "0.00" : num.toFixed(2);
     }),
+    expectedCloseDate: z.union([z.string(), z.date()]).nullable().optional(),
   });
 
 // Server schema - includes organizationId for database insertion
@@ -186,6 +188,7 @@ const insertDealSchemaWithOrg = createInsertSchema(deals)
       const num = Number(val);
       return isNaN(num) ? "0.00" : num.toFixed(2);
     }),
+    expectedCloseDate: z.union([z.string(), z.date()]).nullable().optional(),
   });
 
 export type InsertDeal = z.infer<typeof insertDealSchemaWithOrg>;
