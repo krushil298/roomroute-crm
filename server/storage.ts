@@ -43,7 +43,7 @@ export interface IStorage {
   
   // User-Organization operations (multi-tenant)
   getUserOrganizations(userId: string): Promise<UserOrganization[]>;
-  getOrganizationUsers(organizationId: string): Promise<UserOrganization[]>;
+  getOrganizationUsers(organizationId: string): Promise<any[]>; // Returns joined data with user details
   addUserToOrganization(data: InsertUserOrganization): Promise<UserOrganization>;
   removeUserFromOrganization(userId: string, organizationId: string): Promise<void>;
   
@@ -174,8 +174,23 @@ export class DbStorage implements IStorage {
     return await db.select().from(userOrganizations).where(eq(userOrganizations.userId, userId));
   }
 
-  async getOrganizationUsers(organizationId: string): Promise<UserOrganization[]> {
-    return await db.select().from(userOrganizations).where(eq(userOrganizations.organizationId, organizationId));
+  async getOrganizationUsers(organizationId: string): Promise<any[]> {
+    // Join with users table to get complete user information
+    const results = await db
+      .select({
+        userId: userOrganizations.userId,
+        organizationId: userOrganizations.organizationId,
+        role: userOrganizations.role,
+        active: userOrganizations.active,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+      })
+      .from(userOrganizations)
+      .leftJoin(users, eq(userOrganizations.userId, users.id))
+      .where(eq(userOrganizations.organizationId, organizationId));
+    
+    return results;
   }
 
   async addUserToOrganization(data: InsertUserOrganization): Promise<UserOrganization> {
