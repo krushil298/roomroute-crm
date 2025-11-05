@@ -140,6 +140,26 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
 
   const now = Math.floor(Date.now() / 1000);
   if (now <= user.expires_at) {
+    // Check if user is active in their organization (skip for super_admin)
+    const userId = user.claims?.sub;
+    if (userId) {
+      const dbUser = await storage.getUser(userId);
+      
+      // Super admins don't need organization membership
+      if (dbUser?.role !== "super_admin") {
+        // For regular users, check if they're active in their organization
+        const orgId = dbUser?.currentOrganizationId || dbUser?.organizationId;
+        if (orgId) {
+          const userOrgs = await storage.getOrganizationUsers(orgId);
+          const membership = userOrgs.find(uo => uo.userId === userId);
+          
+          if (membership && !membership.active) {
+            return res.status(403).json({ message: "Account deactivated" });
+          }
+        }
+      }
+    }
+    
     return next();
   }
 

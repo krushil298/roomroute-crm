@@ -172,9 +172,12 @@ export class DbStorage implements IStorage {
   }
 
   async removeUserFromOrganization(userId: string, organizationId: string): Promise<void> {
-    await db.delete(userOrganizations).where(
-      and(eq(userOrganizations.userId, userId), eq(userOrganizations.organizationId, organizationId))
-    );
+    // Soft delete: set active to false instead of hard deleting
+    await db.update(userOrganizations)
+      .set({ active: false })
+      .where(
+        and(eq(userOrganizations.userId, userId), eq(userOrganizations.organizationId, organizationId))
+      );
   }
   
   // Contact operations
