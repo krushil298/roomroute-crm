@@ -100,6 +100,27 @@ export default function Pipeline() {
     },
   });
 
+  const deleteDealMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiRequest("DELETE", `/api/deals/${id}`);
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/deals"] });
+      toast({
+        title: "Success",
+        description: "Deal deleted successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete deal",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSubmit = (data: ClientInsertDeal) => {
     createDealMutation.mutate(data);
   };
@@ -122,6 +143,12 @@ export default function Pipeline() {
       });
       setEditingDealId(dealId);
       setIsEditDialogOpen(true);
+    }
+  };
+
+  const handleDeleteDeal = (dealId: string) => {
+    if (window.confirm("Are you sure you want to delete this deal?")) {
+      deleteDealMutation.mutate(dealId);
     }
   };
 
@@ -165,7 +192,7 @@ export default function Pipeline() {
 
       <div className="flex gap-4 overflow-x-auto pb-4">
         {pipelineData.map((stage) => (
-          <PipelineStage key={stage.stage} {...stage} onDealClick={handleDealClick} />
+          <PipelineStage key={stage.stage} {...stage} onDealClick={handleDealClick} onDeleteDeal={handleDeleteDeal} />
         ))}
       </div>
 

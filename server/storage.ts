@@ -45,6 +45,7 @@ export interface IStorage {
   // User-Organization operations (multi-tenant)
   getUserOrganizations(userId: string): Promise<UserOrganization[]>;
   getOrganizationUsers(organizationId: string): Promise<any[]>; // Returns joined data with user details
+  getAllActiveUsers(): Promise<any[]>; // Returns all active users across all orgs
   getDeactivatedUsers(): Promise<any[]>; // Returns all deactivated users across all orgs
   addUserToOrganization(data: InsertUserOrganization): Promise<UserOrganization>;
   removeUserFromOrganization(userId: string, organizationId: string): Promise<void>;
@@ -212,6 +213,26 @@ export class DbStorage implements IStorage {
       .where(
         and(eq(userOrganizations.userId, userId), eq(userOrganizations.organizationId, organizationId))
       );
+  }
+
+  async getAllActiveUsers(): Promise<any[]> {
+    const results = await db
+      .select({
+        userId: userOrganizations.userId,
+        organizationId: userOrganizations.organizationId,
+        role: userOrganizations.role,
+        active: userOrganizations.active,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        orgName: organizations.name,
+      })
+      .from(userOrganizations)
+      .leftJoin(users, eq(userOrganizations.userId, users.id))
+      .leftJoin(organizations, eq(userOrganizations.organizationId, organizations.id))
+      .where(eq(userOrganizations.active, true));
+    
+    return results;
   }
 
   async getDeactivatedUsers(): Promise<any[]> {

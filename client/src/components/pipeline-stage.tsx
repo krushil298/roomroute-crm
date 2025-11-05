@@ -1,6 +1,14 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { DollarSign } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { DollarSign, MoreVertical, Edit, Trash2 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 interface Deal {
   id: string;
@@ -14,9 +22,10 @@ interface PipelineStageProps {
   deals: Deal[];
   color: string;
   onDealClick?: (dealId: string) => void;
+  onDeleteDeal?: (dealId: string) => void;
 }
 
-export function PipelineStage({ stage, deals, color, onDealClick }: PipelineStageProps) {
+export function PipelineStage({ stage, deals, color, onDealClick, onDeleteDeal }: PipelineStageProps) {
   const totalValue = deals.reduce((sum, deal) => sum + deal.value, 0);
 
   return (
@@ -43,14 +52,42 @@ export function PipelineStage({ stage, deals, color, onDealClick }: PipelineStag
           deals.map((deal) => (
             <Card 
               key={deal.id}
-              className="p-3 cursor-pointer hover-elevate active-elevate-2 transition-all"
-              onClick={() => onDealClick?.(deal.id)}
+              className="p-3 hover-elevate active-elevate-2 transition-all relative group"
               data-testid={`card-deal-${deal.id}`}
             >
-              <div className="space-y-1">
-                <p className="font-medium text-sm line-clamp-1" data-testid={`text-deal-title-${deal.id}`}>
-                  {deal.title}
-                </p>
+              <div className="space-y-1" onClick={() => onDealClick?.(deal.id)} style={{ cursor: 'pointer' }}>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="font-medium text-sm line-clamp-1 flex-1" data-testid={`text-deal-title-${deal.id}`}>
+                    {deal.title}
+                  </p>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                        data-testid={`button-deal-menu-${deal.id}`}
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDealClick?.(deal.id); }} data-testid={`menu-edit-${deal.id}`}>
+                        <Edit className="h-4 w-4 mr-2" />
+                        Edit Deal
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        className="text-destructive" 
+                        onClick={(e) => { e.stopPropagation(); onDeleteDeal?.(deal.id); }}
+                        data-testid={`menu-delete-${deal.id}`}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete Deal
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
                 <p className="text-xs text-muted-foreground line-clamp-1">
                   {deal.contact}
                 </p>

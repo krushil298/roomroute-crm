@@ -6,15 +6,26 @@ RoomRoute is a comprehensive multi-tenant CRM designed for hotels and hospitalit
 ## Recent Updates (November 2025) - Ready for Production
 
 ### Latest Features (November 5, 2025)
+**Replit Object Storage Integration for Contract Uploads**:
+1. **Secure File Upload**: Integrated Replit Object Storage for actual contract file uploads (PDF, Word, etc.) with protected access and ACL policies
+2. **ObjectUploader Component**: Created reusable file upload component using Uppy library with drag-and-drop interface and upload progress tracking
+3. **Protected File Serving**: Uploaded contracts are stored in private object storage directory with authenticated access only
+4. **Server Infrastructure**: 
+   - `server/objectStorage.ts`: Handles presigned URL generation, file uploads, and ACL policy management
+   - `server/objectAcl.ts`: Implements access control policies for private objects
+   - New endpoints: POST /api/objects/upload (get upload URL), PUT /api/contracts (set ACL policy), GET /objects/:objectPath (serve protected files)
+5. **Active Accounts Page**: Updated to use ObjectUploader component for file uploads instead of URL-only input
+6. **Environment Variables**: Object storage configured with DEFAULT_OBJECT_STORAGE_BUCKET_ID, PUBLIC_OBJECT_SEARCH_PATHS, and PRIVATE_OBJECT_DIR
+
 **Deal Editing and Active Accounts Management**:
 1. **Deal Editing**: Deals in the pipeline are now clickable, opening an edit dialog to update deal details (title, value, stage, contact, close date)
 2. **Active Accounts Page**: New dedicated page for managing closed deals (won business). When a deal stage is set to "closed", it automatically moves from the pipeline to Active Accounts
-3. **Contract Upload**: Closed deals in Active Accounts can store signed contract URLs (Google Drive, Dropbox, etc.) for easy reference
+3. **Contract Upload**: Closed deals in Active Accounts can upload actual contract files (PDF, Word, etc.) stored securely in Replit Object Storage with protected access
 4. **Deal Lifecycle Management**: 
    - Closed deals appear only in Active Accounts (removed from pipeline)
    - Reopen action moves deals back to "Qualified" stage in pipeline
    - Edit, Upload Contract, and Reopen actions available for each active account
-5. **Schema Update**: Added `contractUrl` field to deals table to store signed contract links
+5. **Schema Update**: Added `contractUrl` field to deals table to store contract file paths
 
 ### Bug Fixes (November 5, 2025)
 Fixed 6 critical bugs:

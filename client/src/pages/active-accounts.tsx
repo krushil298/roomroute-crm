@@ -15,13 +15,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { FileText, Upload, Edit, RotateCcw, DollarSign, Calendar, User } from "lucide-react";
+import { ObjectUploader } from "@/components/ObjectUploader";
+import type { UploadResult } from "@uppy/core";
 
 export default function ActiveAccounts() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [editingDealId, setEditingDealId] = useState<string | null>(null);
   const [uploadingDealId, setUploadingDealId] = useState<string | null>(null);
-  const [contractUrl, setContractUrl] = useState("");
   const { toast } = useToast();
 
   const { data: allDeals = [] } = useQuery<Deal[]>({
@@ -71,23 +72,25 @@ export default function ActiveAccounts() {
 
   const uploadContractMutation = useMutation({
     mutationFn: async ({ id, url }: { id: string; url: string }) => {
-      const response = await apiRequest("PATCH", `/api/deals/${id}`, { contractUrl: url });
+      const contractResponse = await apiRequest("PUT", "/api/contracts", { contractUrl: url });
+      const { objectPath } = await contractResponse.json();
+      
+      const response = await apiRequest("PATCH", `/api/deals/${id}`, { contractUrl: objectPath });
       return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/deals"] });
       toast({
         title: "Success",
-        description: "Contract link saved successfully",
+        description: "Contract uploaded successfully",
       });
       setIsUploadDialogOpen(false);
       setUploadingDealId(null);
-      setContractUrl("");
     },
     onError: (error: Error) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to save contract link",
+        description: error.message || "Failed to upload contract",
         variant: "destructive",
       });
     },
@@ -126,12 +129,27 @@ export default function ActiveAccounts() {
     setIsUploadDialogOpen(true);
   };
 
-  const handleSaveContractUrl = () => {
-    if (uploadingDealId && contractUrl.trim()) {
-      uploadContractMutation.mutate({ 
-        id: uploadingDealId, 
-        url: contractUrl.trim() 
-      });
+  const handleGetUploadParameters = async () => {
+    const response = await fetch("/api/objects/upload", {
+      method: "POST",
+      credentials: "include",
+    });
+    const { uploadURL } = await response.json();
+    return {
+      method: "PUT" as const,
+      url: uploadURL,
+    };
+  };
+
+  const handleUploadComplete = (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
+    if (result.successful && result.successful.length > 0 && uploadingDealId) {
+      const uploadedUrl = result.successful[0].uploadURL;
+      if (uploadedUrl) {
+        uploadContractMutation.mutate({
+          id: uploadingDealId,
+          url: uploadedUrl,
+        });
+      }
     }
   };
 
@@ -359,17 +377,20 @@ export default function ActiveAccounts() {
             <DialogTitle>Upload Contract</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Contract URL</label>
-              <Input 
-                placeholder="https://drive.google.com/file/..." 
-                value={contractUrl}
-                onChange={(e) => setContractUrl(e.target.value)}
-                data-testid="input-contract-url"
-              />
-              <p className="text-xs text-muted-foreground">
-                Enter a link to your signed contract (Google Drive, Dropbox, etc.)
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Upload a signed contract file (PDF, Word, etc.) to securely store with this account.
               </p>
+              <ObjectUploader
+                maxNumberOfFiles={1}
+                maxFileSize={10485760}
+                onGetUploadParameters={handleGetUploadParameters}
+                onComplete={handleUploadComplete}
+                buttonClassName="w-full"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Select Contract File
+              </ObjectUploader>
             </div>
 
             <div className="flex justify-end gap-2 pt-4">
@@ -378,18 +399,11 @@ export default function ActiveAccounts() {
                 variant="outline" 
                 onClick={() => {
                   setIsUploadDialogOpen(false);
-                  setContractUrl("");
+                  setUploadingDealId(null);
                 }}
                 data-testid="button-cancel-upload"
               >
                 Cancel
-              </Button>
-              <Button 
-                onClick={handleSaveContractUrl}
-                disabled={!contractUrl.trim() || uploadContractMutation.isPending}
-                data-testid="button-save-contract-url"
-              >
-                {uploadContractMutation.isPending ? "Saving..." : "Save Contract Link"}
               </Button>
             </div>
           </div>

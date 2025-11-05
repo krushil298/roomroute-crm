@@ -22,6 +22,10 @@ export default function AdminManagement() {
     queryKey: ["/api/admin/deactivated-users"],
   });
 
+  const { data: allActiveUsers = [] } = useQuery<any[]>({
+    queryKey: ["/api/admin/all-users"],
+  });
+
   const activeOrgs = allOrganizations.filter(org => org.active);
   const archivedOrgs = allOrganizations.filter(org => !org.active);
 
@@ -149,6 +153,46 @@ export default function AdminManagement() {
                     <ArchiveRestore className="h-4 w-4 mr-1" />
                     Restore
                   </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* All Active Users Section */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <UserCheck className="h-5 w-5" />
+            <CardTitle>All Active Users</CardTitle>
+            <Badge variant="default">{allActiveUsers.length}</Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {allActiveUsers.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              No active users
+            </p>
+          ) : (
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {allActiveUsers.map((userOrg: any) => (
+                <div
+                  key={`${userOrg.userId}-${userOrg.organizationId}`}
+                  className="flex items-center justify-between p-3 border rounded-md"
+                  data-testid={`row-active-user-${userOrg.userId}`}
+                >
+                  <div className="flex-1">
+                    <p className="font-medium" data-testid={`text-active-user-email-${userOrg.userId}`}>
+                      {userOrg.email}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {userOrg.firstName} {userOrg.lastName} • {userOrg.orgName}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Role: <Badge variant="secondary" className="text-xs">{userOrg.role}</Badge>
+                    </p>
+                  </div>
                 </div>
               ))}
             </div>
