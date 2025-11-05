@@ -28,7 +28,7 @@ RoomRoute is a comprehensive multi-tenant CRM designed for hotels and hospitalit
 5. **Schema Update**: Added `contractUrl` field to deals table to store contract file paths
 
 ### Bug Fixes (November 5, 2025)
-Fixed 8 critical bugs:
+Fixed 9 critical bugs:
 1. **Deal Creation Validation**: Removed probability field completely from deals schema, forms (deals.tsx, pipeline.tsx), and all related validation
 2. **Date Picker Timezone Issue**: Fixed off-by-one day bug caused by timezone conversion. Now stores dates as raw yyyy-MM-dd strings and converts to Date objects only for ORM insertion
 3. **Team Invite Visibility**: Fixed invite button not showing for organization admins. Updated role check to include user.role === "admin" for org creators
@@ -37,6 +37,7 @@ Fixed 8 critical bugs:
 6. **This Month KPI Clickability**: Changed onClick from undefined to navigate to /reports page when clicked
 7. **Object Storage Path Normalization**: Fixed critical bug in `normalizeObjectEntityPath` where leading slashes weren't stripped from URL pathname and PRIVATE_OBJECT_DIR, causing contract upload path normalization to fail. Added defensive validation in PUT /api/contracts to ensure only properly normalized /objects/... paths are persisted
 8. **Three-Dot Menu Functionality**: Fixed all pages (Dashboard, /pipeline, /deals) to have fully functional three-dot dropdown menus with Edit/Delete deal functionality. Rebuilt /deals page to replace static DealCard component with dynamic cards featuring working dropdown menus. Added conditional rendering to PipelineStage to only show dropdown when handlers are provided (prevents errors on Leads column which contains contacts, not deals)
+9. **Archived Organization Visibility**: Fixed organization switcher dropdown to filter out archived organizations. Added frontend filter in OrganizationSwitcher component to only display organizations where active !== false, preventing archived hotels from appearing in super admin's organization selection dropdown
 
 ### Previous Updates
 - **Bug Fixes**: Fixed outreach save with empty notes, super admin onboarding bypass, dashboard month-over-month metrics, pipeline overview showing leads correctly, and removed debug validation button from settings
