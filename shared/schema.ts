@@ -159,17 +159,34 @@ export const deals = pgTable("deals", {
 });
 
 // Client schema - used by frontend (organizationId omitted for security)
-export const insertDealSchema = createInsertSchema(deals).omit({
-  id: true,
-  createdAt: true,
-  organizationId: true,
-});
+// Coerce value to accept number/string and convert to proper decimal string
+export const insertDealSchema = createInsertSchema(deals)
+  .omit({
+    id: true,
+    createdAt: true,
+    organizationId: true,
+  })
+  .extend({
+    value: z.coerce.string().transform(val => {
+      if (!val || val === "" || val === "null" || val === "undefined") return "0.00";
+      const num = Number(val);
+      return isNaN(num) ? "0.00" : num.toFixed(2);
+    }),
+  });
 
 // Server schema - includes organizationId for database insertion
-const insertDealSchemaWithOrg = createInsertSchema(deals).omit({
-  id: true,
-  createdAt: true,
-});
+const insertDealSchemaWithOrg = createInsertSchema(deals)
+  .omit({
+    id: true,
+    createdAt: true,
+  })
+  .extend({
+    value: z.coerce.string().transform(val => {
+      if (!val || val === "" || val === "null" || val === "undefined") return "0.00";
+      const num = Number(val);
+      return isNaN(num) ? "0.00" : num.toFixed(2);
+    }),
+  });
 
 export type InsertDeal = z.infer<typeof insertDealSchemaWithOrg>;
 export type ClientInsertDeal = z.infer<typeof insertDealSchema>;
