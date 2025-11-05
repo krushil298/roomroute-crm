@@ -339,58 +339,50 @@ export default function Settings() {
       </form>
 
       {user?.role === "super_admin" && organization && (
-        <Card className="border-destructive/50">
-          <CardHeader>
-            <CardTitle className="text-destructive">Danger Zone</CardTitle>
-            <CardDescription>
-              Archive this organization to prevent users from accessing it
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button 
-                  variant={organization.active ? "destructive" : "default"}
-                  data-testid="button-archive-organization"
+        <div className="flex justify-end pt-4 border-t">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button 
+                variant={organization.active ? "destructive" : "default"}
+                data-testid="button-archive-organization"
+              >
+                {organization.active ? (
+                  <>
+                    <Archive className="h-4 w-4 mr-2" />
+                    Archive Hotel
+                  </>
+                ) : (
+                  <>
+                    <ArchiveRestore className="h-4 w-4 mr-2" />
+                    Reactivate Hotel
+                  </>
+                )}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  {organization.active ? "Archive Hotel?" : "Reactivate Hotel?"}
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  {organization.active 
+                    ? "Archiving this hotel deactivates all users and hides it until reactivated."
+                    : "This will restore access to this hotel. Users will be able to log in again."
+                  }
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel data-testid="button-cancel-archive">Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => archiveMutation.mutate(!organization.active)}
+                  data-testid="button-confirm-archive"
                 >
-                  {organization.active ? (
-                    <>
-                      <Archive className="h-4 w-4 mr-2" />
-                      Archive Organization
-                    </>
-                  ) : (
-                    <>
-                      <ArchiveRestore className="h-4 w-4 mr-2" />
-                      Restore Organization
-                    </>
-                  )}
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>
-                    {organization.active ? "Archive Organization?" : "Restore Organization?"}
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    {organization.active 
-                      ? "This will prevent all users from accessing this organization. The organization will be hidden from the organization switcher and users won't be able to log in. You can restore it later."
-                      : "This will restore access to this organization. Users will be able to log in and the organization will appear in the organization switcher."
-                    }
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel data-testid="button-cancel-archive">Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => archiveMutation.mutate(!organization.active)}
-                    data-testid="button-confirm-archive"
-                  >
-                    {organization.active ? "Archive" : "Restore"}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </CardContent>
-        </Card>
+                  {organization.active ? "Archive" : "Reactivate"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       )}
     </div>
   );

@@ -65,7 +65,7 @@ export function PipelineStage({ stage, deals, color, onDealClick, onDeleteDeal }
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="h-6 w-6"
                         data-testid={`button-deal-menu-${deal.id}`}
                       >
                         <MoreVertical className="h-4 w-4" />
