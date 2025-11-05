@@ -51,6 +51,7 @@ export default function Pipeline() {
       stage: "qualified",
       contactId: null,
       expectedCloseDate: null,
+      actionDate: null,
     },
   });
 
@@ -140,6 +141,7 @@ export default function Pipeline() {
         stage: deal.stage,
         contactId: deal.contactId,
         expectedCloseDate: deal.expectedCloseDate,
+        actionDate: format(new Date(), "yyyy-MM-dd"),
       });
       setEditingDealId(dealId);
       setIsEditDialogOpen(true);
@@ -438,6 +440,25 @@ export default function Pipeline() {
                         value={field.value ? (typeof field.value === 'string' ? (field.value as string).split('T')[0] : format(new Date(field.value as Date), "yyyy-MM-dd")) : ""}
                         onChange={(e) => field.onChange(e.target.value || null)}
                         data-testid="input-edit-deal-close-date"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editForm.control}
+                name="actionDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Action Date *</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="date" 
+                        value={field.value ? (typeof field.value === 'string' ? (field.value as string).split('T')[0] : format(new Date(field.value as Date), "yyyy-MM-dd")) : format(new Date(), "yyyy-MM-dd")}
+                        onChange={(e) => field.onChange(e.target.value || null)}
+                        data-testid="input-edit-deal-action-date"
                       />
                     </FormControl>
                     <FormMessage />
