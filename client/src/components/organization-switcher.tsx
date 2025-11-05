@@ -17,6 +17,7 @@ type Organization = {
   hotelName?: string;
   city?: string;
   state?: string;
+  active?: boolean;
 };
 
 export function OrganizationSwitcher() {
@@ -71,6 +72,8 @@ export function OrganizationSwitcher() {
   const currentValue = user?.currentOrganizationId || user?.organizationId;
   const displayValue = currentOrg?.name || currentOrg?.hotelName || "Select organization";
 
+  const activeOrganizations = organizations?.filter(org => org.active !== false) || [];
+
   return (
     <Select
       value={currentValue || undefined}
@@ -86,7 +89,7 @@ export function OrganizationSwitcher() {
         </div>
       </SelectTrigger>
       <SelectContent>
-        {organizations?.map((org) => (
+        {activeOrganizations.map((org) => (
           <SelectItem key={org.id} value={org.id} data-testid={`option-org-${org.id}`}>
             <div className="flex flex-col">
               <span className="font-medium">{org.name || org.hotelName}</span>
