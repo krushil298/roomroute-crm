@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import { z } from "zod";
 import {
   insertContactSchema,
   insertDealSchema,
@@ -149,16 +150,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "No organization" });
       }
       
-      const { email, role } = req.body;
-      if (!email) {
-        return res.status(400).json({ error: "Email is required" });
+      // Validate request body with Zod
+      const inviteSchema = z.object({
+        email: z.string().email("Valid email address is required"),
+        role: z.enum(["user", "admin"]).optional().default("user"),
+      });
+      
+      const validated = inviteSchema.parse(req.body);
+      const { email, role } = validated;
+
+      // Get organization details for the invitation email
+      const org = await storage.getOrganization(orgId);
+      if (!org || !user) {
+        return res.status(404).json({ error: "Organization or user not found" });
       }
 
-      // TODO: Send invitation email via Resend
-      // For now, just return success - will implement email sending later
-      res.json({ message: "Invitation would be sent to " + email, email, role: role || "user" });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to send invitation" });
+      // Construct sender name from inviting user with fallback
+      const firstName = user.firstName?.trim() || "";
+      const lastName = user.lastName?.trim() || "";
+      const senderName = firstName && lastName 
+        ? `${firstName} ${lastName}` 
+        : (firstName || lastName || user.email || "RoomRoute Team");
+      
+      const senderEmail = process.env.SENDER_EMAIL || "onboarding@resend.dev";
+      const fromAddress = `${senderName} <${senderEmail}>`;
+      const replyToEmail = user.email || undefined;
+      
+      // Create invitation email content
+      const subject = `You're invited to join ${org.name} on RoomRoute`;
+      const baseUrl = process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : 'http://localhost:5000';
+      const loginUrl = `${baseUrl}/login`;
+      
+      const htmlBody = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2>You've been invited to join ${org.name}</h2>
+          <p>Hi,</p>
+          <p>${senderName} has invited you to join <strong>${org.name}</strong> on RoomRoute as a <strong>${role || 'user'}</strong>.</p>
+          <p>RoomRoute is a CRM platform designed for hotels and hospitality businesses to manage contacts, deals, and sales pipelines.</p>
+          <p style="margin: 30px 0;">
+            <a href="${loginUrl}" style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              Log in to RoomRoute
+            </a>
+          </p>
+          <p>If you don't have an account yet, you can sign up using this email address (${email}).</p>
+          <p>Once you log in, you'll automatically be added to ${org.name}.</p>
+          <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
+          <p style="color: #6b7280; font-size: 14px;">
+            If you have any questions, reply to this email to reach ${senderName}.
+          </p>
+        </div>
+      `;
+
+      if (!process.env.RESEND_API_KEY) {
+        console.log("Team invitation email (Resend not configured):", { 
+          from: fromAddress,
+          to: email,
+          subject,
+          role: role || 'user',
+          organization: org.name
+        });
+        return res.json({ 
+          success: true, 
+          message: `Invitation logged for ${email} (Resend not configured)`,
+          email,
+          role: role || "user" 
+        });
+      }
+
+      const { Resend } = await import("resend");
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      
+      await resend.emails.send({
+        from: fromAddress,
+        replyTo: replyToEmail,
+        to: [email],
+        subject: subject,
+        html: htmlBody,
+      });
+
+      console.log(`✅ Team invitation sent - From: ${fromAddress} | To: ${email} | Org: ${org.name} | Role: ${role || 'user'}`);
+      res.json({ 
+        success: true, 
+        message: `Invitation sent to ${email}`,
+        email,
+        role: role || "user" 
+      });
+    } catch (error: any) {
+      console.error("Team invitation error:", error);
+      res.status(500).json({ 
+        error: "Failed to send invitation",
+        details: error.message 
+      });
     }
   });
 

@@ -6,6 +6,13 @@ RoomRoute is a comprehensive multi-tenant CRM designed for hotels and hospitalit
 ## Recent Updates (November 2025) - Ready for Production
 
 ### Latest Features (November 5, 2025)
+**Email Invitations for Team Members**:
+1. **Resend Integration**: Implemented full email sending functionality using Resend API for team member invitations
+2. **Professional Email Template**: Invitation emails include organization name, inviter details, role assignment, and login link
+3. **Reply-To Support**: Emails use inviter's email as reply-to address for seamless communication
+4. **Environment Configuration**: Uses RESEND_API_KEY secret and optional SENDER_EMAIL environment variable (defaults to Resend sandbox)
+5. **Graceful Fallback**: Logs invitation details to console when Resend is not configured for development testing
+
 **Replit Object Storage Integration for Contract Uploads**:
 1. **Secure File Upload**: Integrated Replit Object Storage for actual contract file uploads (PDF, Word, etc.) with protected access and ACL policies
 2. **ObjectUploader Component**: Created reusable file upload component using Uppy library with drag-and-drop interface and upload progress tracking
