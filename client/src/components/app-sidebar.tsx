@@ -3,6 +3,7 @@ import {
   Users,
   TrendingUp,
   Activity,
+  Briefcase,
   Calculator,
   Upload,
   FileText,
@@ -45,6 +46,11 @@ const menuItems = [
     title: "Pipeline",
     url: "/pipeline",
     icon: Activity,
+  },
+  {
+    title: "Active Accounts",
+    url: "/active-accounts",
+    icon: Briefcase,
   },
   {
     title: "Templates",

@@ -17,17 +17,33 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function Pipeline() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingDealId, setEditingDealId] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const { data: deals = [] } = useQuery<Deal[]>({
+  const { data: allDeals = [] } = useQuery<Deal[]>({
     queryKey: ["/api/deals"],
   });
+
+  // Filter out closed deals - they belong in Active Accounts
+  const deals = allDeals.filter(deal => deal.stage.toLowerCase() !== "closed");
 
   const { data: contacts = [] } = useQuery<Contact[]>({
     queryKey: ["/api/contacts"],
   });
 
   const form = useForm<ClientInsertDeal>({
+    resolver: zodResolver(insertDealSchema),
+    defaultValues: {
+      title: "",
+      value: "0.00",
+      stage: "qualified",
+      contactId: null,
+      expectedCloseDate: null,
+    },
+  });
+
+  const editForm = useForm<ClientInsertDeal>({
     resolver: zodResolver(insertDealSchema),
     defaultValues: {
       title: "",
@@ -61,8 +77,52 @@ export default function Pipeline() {
     },
   });
 
+  const updateDealMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<ClientInsertDeal> }) => {
+      const response = await apiRequest("PATCH", `/api/deals/${id}`, data);
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/deals"] });
+      toast({
+        title: "Success",
+        description: "Deal updated successfully",
+      });
+      setIsEditDialogOpen(false);
+      setEditingDealId(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update deal",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSubmit = (data: ClientInsertDeal) => {
     createDealMutation.mutate(data);
+  };
+
+  const handleEditSubmit = (data: ClientInsertDeal) => {
+    if (editingDealId) {
+      updateDealMutation.mutate({ id: editingDealId, data });
+    }
+  };
+
+  const handleDealClick = (dealId: string) => {
+    const deal = allDeals.find((d) => d.id === dealId);
+    if (deal) {
+      editForm.reset({
+        title: deal.title,
+        value: deal.value,
+        stage: deal.stage,
+        contactId: deal.contactId,
+        expectedCloseDate: deal.expectedCloseDate,
+      });
+      setEditingDealId(dealId);
+      setIsEditDialogOpen(true);
+    }
   };
 
   const stageConfig = [
@@ -105,7 +165,7 @@ export default function Pipeline() {
 
       <div className="flex gap-4 overflow-x-auto pb-4">
         {pipelineData.map((stage) => (
-          <PipelineStage key={stage.stage} {...stage} />
+          <PipelineStage key={stage.stage} {...stage} onDealClick={handleDealClick} />
         ))}
       </div>
 
@@ -237,6 +297,142 @@ export default function Pipeline() {
                   data-testid="button-save-deal"
                 >
                   {createDealMutation.isPending ? "Creating..." : "Create Deal"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Deal</DialogTitle>
+          </DialogHeader>
+          <Form {...editForm}>
+            <form onSubmit={editForm.handleSubmit(handleEditSubmit)} className="space-y-4">
+              <FormField
+                control={editForm.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Deal Title *</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Enter deal title" 
+                        {...field} 
+                        data-testid="input-edit-deal-title"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editForm.control}
+                name="contactId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Contact</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || ""}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-edit-deal-contact">
+                          <SelectValue placeholder="Select a contact" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {contacts.map((contact) => (
+                          <SelectItem key={contact.id} value={contact.id}>
+                            {contact.leadOrProject}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editForm.control}
+                name="value"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Deal Value ($) *</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        step="0.01"
+                        placeholder="0.00" 
+                        {...field} 
+                        data-testid="input-edit-deal-value"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editForm.control}
+                name="stage"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Stage *</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-edit-deal-stage">
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="lead">New</SelectItem>
+                        <SelectItem value="qualified">Qualified</SelectItem>
+                        <SelectItem value="proposal">Proposal</SelectItem>
+                        <SelectItem value="negotiation">Negotiation</SelectItem>
+                        <SelectItem value="closed">Closed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editForm.control}
+                name="expectedCloseDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Expected Close Date</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="date" 
+                        value={field.value ? (typeof field.value === 'string' ? (field.value as string).split('T')[0] : format(new Date(field.value as Date), "yyyy-MM-dd")) : ""}
+                        onChange={(e) => field.onChange(e.target.value || null)}
+                        data-testid="input-edit-deal-close-date"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex justify-end gap-2 pt-4">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setIsEditDialogOpen(false)}
+                  data-testid="button-cancel-edit-deal"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={updateDealMutation.isPending}
+                  data-testid="button-update-deal"
+                >
+                  {updateDealMutation.isPending ? "Updating..." : "Update Deal"}
                 </Button>
               </div>
             </form>

@@ -155,6 +155,7 @@ export const deals = pgTable("deals", {
   value: decimal("value", { precision: 10, scale: 2 }).notNull(),
   stage: text("stage").notNull().default("lead"),
   expectedCloseDate: timestamp("expected_close_date"),
+  contractUrl: text("contract_url"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
