@@ -12,6 +12,16 @@ import {
   updateOrganizationSchema,
 } from "@shared/schema";
 
+// Helper function to get effective organization ID
+// For super_admin: use currentOrganizationId
+// For regular users: use organizationId
+function getEffectiveOrgId(user: any): string | undefined {
+  if (user?.role === "super_admin") {
+    return user.currentOrganizationId || undefined;
+  }
+  return user?.organizationId;
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication
   await setupAuth(app);
@@ -62,10 +72,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      if (!user?.organizationId) {
+      const orgId = getEffectiveOrgId(user);
+      if (!orgId) {
         return res.status(403).json({ error: "No organization" });
       }
-      const org = await storage.getOrganization(user.organizationId);
+      const org = await storage.getOrganization(orgId);
       if (!org) {
         return res.status(404).json({ error: "Organization not found" });
       }
@@ -80,7 +91,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      if (!user?.organizationId) {
+      const orgId = getEffectiveOrgId(user);
+      if (!orgId) {
         return res.status(403).json({ error: "No organization" });
       }
       
@@ -91,7 +103,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log("Validated organization data:", JSON.stringify(validated, null, 2));
       
-      const updatedOrg = await storage.updateOrganization(user.organizationId, validated);
+      const updatedOrg = await storage.updateOrganization(orgId, validated);
       
       if (!updatedOrg) {
         return res.status(404).json({ error: "Organization not found" });
@@ -116,10 +128,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      if (!user?.organizationId) {
+      const orgId = getEffectiveOrgId(user);
+      if (!orgId) {
         return res.status(403).json({ error: "No organization" });
       }
-      const teamMembers = await storage.getOrganizationUsers(user.organizationId);
+      const teamMembers = await storage.getOrganizationUsers(orgId);
       res.json(teamMembers);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch team" });
@@ -130,7 +143,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      if (!user?.organizationId) {
+      const orgId = getEffectiveOrgId(user);
+      if (!orgId) {
         return res.status(403).json({ error: "No organization" });
       }
       
@@ -151,10 +165,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const currentUserId = req.user.claims.sub;
       const user = await storage.getUser(currentUserId);
-      if (!user?.organizationId) {
+      const orgId = getEffectiveOrgId(user);
+      if (!orgId) {
         return res.status(403).json({ error: "No organization" });
       }
-      await storage.removeUserFromOrganization(req.params.userId, user.organizationId);
+      await storage.removeUserFromOrganization(req.params.userId, orgId);
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to remove team member" });
@@ -201,10 +216,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      if (!user?.organizationId) {
+      const orgId = getEffectiveOrgId(user);
+      if (!orgId) {
         return res.status(403).json({ error: "No organization" });
       }
-      const contacts = await storage.getAllContacts(user.organizationId);
+      const contacts = await storage.getAllContacts(orgId);
       res.json(contacts);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch contacts" });
@@ -215,10 +231,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      if (!user?.organizationId) {
+      const orgId = getEffectiveOrgId(user);
+      if (!orgId) {
         return res.status(403).json({ error: "No organization" });
       }
-      const contact = await storage.getContact(req.params.id, user.organizationId);
+      const contact = await storage.getContact(req.params.id, orgId);
       if (!contact) {
         return res.status(404).json({ error: "Contact not found" });
       }
@@ -232,7 +249,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      if (!user?.organizationId) {
+      const orgId = getEffectiveOrgId(user);
+      if (!orgId) {
         return res.status(403).json({ error: "No organization" });
       }
       // Validate request body (organizationId already omitted from insertContactSchema)
@@ -241,7 +259,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Add server-side organizationId (security: prevent client from setting orgId)
       const contact = await storage.createContact({
         ...validated,
-        organizationId: user.organizationId,
+        organizationId: orgId,
       });
       res.status(201).json(contact);
     } catch (error) {
@@ -254,12 +272,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      if (!user?.organizationId) {
+      const orgId = getEffectiveOrgId(user);
+      if (!orgId) {
         return res.status(403).json({ error: "No organization" });
       }
       // Validate partial updates (organizationId already omitted from insertContactSchema)
       const validated = insertContactSchema.partial().parse(req.body);
-      const contact = await storage.updateContact(req.params.id, user.organizationId, validated);
+      const contact = await storage.updateContact(req.params.id, orgId, validated);
       if (!contact) {
         return res.status(404).json({ error: "Contact not found" });
       }
@@ -273,10 +292,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      if (!user?.organizationId) {
+      const orgId = getEffectiveOrgId(user);
+      if (!orgId) {
         return res.status(403).json({ error: "No organization" });
       }
-      await storage.deleteContact(req.params.id, user.organizationId);
+      await storage.deleteContact(req.params.id, orgId);
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to delete contact" });
@@ -287,7 +307,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      if (!user?.organizationId) {
+      const orgId = getEffectiveOrgId(user);
+      if (!orgId) {
         return res.status(403).json({ error: "No organization" });
       }
       const { contacts } = req.body;
@@ -303,7 +324,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const parsed = insertContactSchema.parse(c);
           return {
             ...parsed,
-            organizationId: user.organizationId!,
+            organizationId: orgId,
           };
         } catch (validationError: any) {
           console.error(`Validation error for contact at index ${index}:`, validationError);
@@ -331,10 +352,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      if (!user?.organizationId) {
+      const orgId = getEffectiveOrgId(user);
+      if (!orgId) {
         return res.status(403).json({ error: "No organization" });
       }
-      const deals = await storage.getAllDeals(user.organizationId);
+      const deals = await storage.getAllDeals(orgId);
       res.json(deals);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch deals" });
@@ -345,10 +367,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      if (!user?.organizationId) {
+      const orgId = getEffectiveOrgId(user);
+      if (!orgId) {
         return res.status(403).json({ error: "No organization" });
       }
-      const deal = await storage.getDeal(req.params.id, user.organizationId);
+      const deal = await storage.getDeal(req.params.id, orgId);
       if (!deal) {
         return res.status(404).json({ error: "Deal not found" });
       }
@@ -362,10 +385,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      if (!user?.organizationId) {
+      const orgId = getEffectiveOrgId(user);
+      if (!orgId) {
         return res.status(403).json({ error: "No organization" });
       }
-      const deals = await storage.getDealsByContact(req.params.contactId, user.organizationId);
+      const deals = await storage.getDealsByContact(req.params.contactId, orgId);
       res.json(deals);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch deals" });
@@ -376,13 +400,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      if (!user?.organizationId) {
+      const orgId = getEffectiveOrgId(user);
+      if (!orgId) {
         return res.status(403).json({ error: "No organization" });
       }
       const validated = insertDealSchema.parse(req.body);
       const deal = await storage.createDeal({
         ...validated,
-        organizationId: user.organizationId,
+        organizationId: orgId,
       });
       res.status(201).json(deal);
     } catch (error) {
@@ -394,10 +419,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      if (!user?.organizationId) {
+      const orgId = getEffectiveOrgId(user);
+      if (!orgId) {
         return res.status(403).json({ error: "No organization" });
       }
-      const deal = await storage.updateDeal(req.params.id, user.organizationId, req.body);
+      const deal = await storage.updateDeal(req.params.id, orgId, req.body);
       if (!deal) {
         return res.status(404).json({ error: "Deal not found" });
       }
@@ -411,10 +437,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      if (!user?.organizationId) {
+      const orgId = getEffectiveOrgId(user);
+      if (!orgId) {
         return res.status(403).json({ error: "No organization" });
       }
-      await storage.deleteDeal(req.params.id, user.organizationId);
+      await storage.deleteDeal(req.params.id, orgId);
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to delete deal" });
@@ -426,10 +453,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      if (!user?.organizationId) {
+      const orgId = getEffectiveOrgId(user);
+      if (!orgId) {
         return res.status(403).json({ error: "No organization" });
       }
-      const activities = await storage.getAllActivities(user.organizationId);
+      const activities = await storage.getAllActivities(orgId);
       res.json(activities);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch activities" });
@@ -440,10 +468,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      if (!user?.organizationId) {
+      const orgId = getEffectiveOrgId(user);
+      if (!orgId) {
         return res.status(403).json({ error: "No organization" });
       }
-      const activities = await storage.getActivitiesByContact(req.params.contactId, user.organizationId);
+      const activities = await storage.getActivitiesByContact(req.params.contactId, orgId);
       res.json(activities);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch activities" });
@@ -454,10 +483,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      if (!user?.organizationId) {
+      const orgId = getEffectiveOrgId(user);
+      if (!orgId) {
         return res.status(403).json({ error: "No organization" });
       }
-      const activities = await storage.getActivitiesByDeal(req.params.dealId, user.organizationId);
+      const activities = await storage.getActivitiesByDeal(req.params.dealId, orgId);
       res.json(activities);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch activities" });
@@ -468,13 +498,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      if (!user?.organizationId) {
+      const orgId = getEffectiveOrgId(user);
+      if (!orgId) {
         return res.status(403).json({ error: "No organization" });
       }
       const validated = insertActivitySchema.parse(req.body);
       const activity = await storage.createActivity({
         ...validated,
-        organizationId: user.organizationId,
+        organizationId: orgId,
       });
       res.status(201).json(activity);
     } catch (error) {
@@ -487,10 +518,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      if (!user?.organizationId) {
+      const orgId = getEffectiveOrgId(user);
+      if (!orgId) {
         return res.status(403).json({ error: "No organization" });
       }
-      const templates = await storage.getAllContractTemplates(user.organizationId);
+      const templates = await storage.getAllContractTemplates(orgId);
       res.json(templates);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch contract templates" });
@@ -501,10 +533,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      if (!user?.organizationId) {
+      const orgId = getEffectiveOrgId(user);
+      if (!orgId) {
         return res.status(403).json({ error: "No organization" });
       }
-      const template = await storage.getContractTemplate(req.params.id, user.organizationId);
+      const template = await storage.getContractTemplate(req.params.id, orgId);
       if (!template) {
         return res.status(404).json({ error: "Template not found" });
       }
@@ -518,10 +551,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      if (!user?.organizationId) {
+      const orgId = getEffectiveOrgId(user);
+      if (!orgId) {
         return res.status(403).json({ error: "No organization" });
       }
-      const templates = await storage.getContractTemplatesByType(req.params.type, user.organizationId);
+      const templates = await storage.getContractTemplatesByType(req.params.type, orgId);
       res.json(templates);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch templates" });
@@ -532,13 +566,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      if (!user?.organizationId) {
+      const orgId = getEffectiveOrgId(user);
+      if (!orgId) {
         return res.status(403).json({ error: "No organization" });
       }
       const validated = insertContractTemplateSchema.parse(req.body);
       const template = await storage.createContractTemplate({
         ...validated,
-        organizationId: user.organizationId,
+        organizationId: orgId,
       });
       res.status(201).json(template);
     } catch (error) {
@@ -550,10 +585,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      if (!user?.organizationId) {
+      const orgId = getEffectiveOrgId(user);
+      if (!orgId) {
         return res.status(403).json({ error: "No organization" });
       }
-      const template = await storage.updateContractTemplate(req.params.id, user.organizationId, req.body);
+      const template = await storage.updateContractTemplate(req.params.id, orgId, req.body);
       if (!template) {
         return res.status(404).json({ error: "Template not found" });
       }
@@ -567,10 +603,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      if (!user?.organizationId) {
+      const orgId = getEffectiveOrgId(user);
+      if (!orgId) {
         return res.status(403).json({ error: "No organization" });
       }
-      await storage.deleteContractTemplate(req.params.id, user.organizationId);
+      await storage.deleteContractTemplate(req.params.id, orgId);
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to delete template" });
@@ -582,10 +619,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      if (!user?.organizationId) {
+      const orgId = getEffectiveOrgId(user);
+      if (!orgId) {
         return res.status(403).json({ error: "No organization" });
       }
-      const templates = await storage.getAllEmailTemplates(user.organizationId);
+      const templates = await storage.getAllEmailTemplates(orgId);
       res.json(templates);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch email templates" });
@@ -596,10 +634,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      if (!user?.organizationId) {
+      const orgId = getEffectiveOrgId(user);
+      if (!orgId) {
         return res.status(403).json({ error: "No organization" });
       }
-      const template = await storage.getEmailTemplate(req.params.id, user.organizationId);
+      const template = await storage.getEmailTemplate(req.params.id, orgId);
       if (!template) {
         return res.status(404).json({ error: "Template not found" });
       }
@@ -613,13 +652,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      if (!user?.organizationId) {
+      const orgId = getEffectiveOrgId(user);
+      if (!orgId) {
         return res.status(403).json({ error: "No organization" });
       }
       const validated = insertEmailTemplateSchema.parse(req.body);
       const template = await storage.createEmailTemplate({
         ...validated,
-        organizationId: user.organizationId,
+        organizationId: orgId,
       });
       res.status(201).json(template);
     } catch (error) {
@@ -631,10 +671,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      if (!user?.organizationId) {
+      const orgId = getEffectiveOrgId(user);
+      if (!orgId) {
         return res.status(403).json({ error: "No organization" });
       }
-      const template = await storage.updateEmailTemplate(req.params.id, user.organizationId, req.body);
+      const template = await storage.updateEmailTemplate(req.params.id, orgId, req.body);
       if (!template) {
         return res.status(404).json({ error: "Template not found" });
       }
@@ -648,10 +689,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      if (!user?.organizationId) {
+      const orgId = getEffectiveOrgId(user);
+      if (!orgId) {
         return res.status(403).json({ error: "No organization" });
       }
-      await storage.deleteEmailTemplate(req.params.id, user.organizationId);
+      await storage.deleteEmailTemplate(req.params.id, orgId);
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to delete template" });
