@@ -37,6 +37,7 @@ export const userOrganizations = pgTable("user_organizations", {
   userId: varchar("user_id").notNull().references(() => users.id),
   organizationId: varchar("organization_id").notNull().references(() => organizations.id),
   role: text("role").notNull().default("user"), // Role within this org: user, admin
+  active: boolean("active").notNull().default(true), // Soft delete capability
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
