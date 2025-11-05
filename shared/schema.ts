@@ -21,13 +21,27 @@ export const users = pgTable("users", {
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
-  organizationId: varchar("organization_id").references(() => organizations.id),
+  organizationId: varchar("organization_id").references(() => organizations.id), // Legacy: primary org
+  role: text("role").notNull().default("user"), // Global role: user, admin, super_admin
+  currentOrganizationId: varchar("current_organization_id"), // For users in multiple orgs
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+
+// Junction table for multi-org support
+export const userOrganizations = pgTable("user_organizations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id),
+  role: text("role").notNull().default("user"), // Role within this org: user, admin
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type UserOrganization = typeof userOrganizations.$inferSelect;
+export type InsertUserOrganization = typeof userOrganizations.$inferInsert;
 
 // Organizations table for multi-tenancy
 export const organizations = pgTable("organizations", {
@@ -126,12 +140,21 @@ export const deals = pgTable("deals", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Client schema - used by frontend (organizationId omitted for security)
 export const insertDealSchema = createInsertSchema(deals).omit({
+  id: true,
+  createdAt: true,
+  organizationId: true,
+});
+
+// Server schema - includes organizationId for database insertion
+const insertDealSchemaWithOrg = createInsertSchema(deals).omit({
   id: true,
   createdAt: true,
 });
 
-export type InsertDeal = z.infer<typeof insertDealSchema>;
+export type InsertDeal = z.infer<typeof insertDealSchemaWithOrg>;
+export type ClientInsertDeal = z.infer<typeof insertDealSchema>;
 export type Deal = typeof deals.$inferSelect;
 
 export const activities = pgTable("activities", {

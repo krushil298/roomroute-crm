@@ -6,6 +6,7 @@ import {
   Calculator,
   Upload,
   FileText,
+  BarChart3,
   Settings,
 } from "lucide-react";
 import {
@@ -58,6 +59,11 @@ const menuItems = [
     title: "Import Leads",
     url: "/import",
     icon: Upload,
+  },
+  {
+    title: "Reports",
+    url: "/reports",
+    icon: BarChart3,
   },
   {
     title: "Settings",

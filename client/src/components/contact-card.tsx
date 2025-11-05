@@ -5,6 +5,8 @@ import { Mail, Phone, Building2, User, Briefcase, Hotel, DollarSign } from "luci
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { EmailComposer } from "./email-composer";
+import { OutreachDialog } from "./outreach-dialog";
+import type { Contact } from "@shared/schema";
 
 interface ContactCardProps {
   id: string;
@@ -47,10 +49,26 @@ export function ContactCard({
   onDelete,
 }: ContactCardProps) {
   const [emailComposerOpen, setEmailComposerOpen] = useState(false);
+  const [outreachDialogOpen, setOutreachDialogOpen] = useState(false);
   
   const initials = primaryContact 
     ? primaryContact.split(" ").map((n) => n[0]).join("").toUpperCase()
     : leadOrProject.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
+
+  const contactData: Contact = {
+    id,
+    leadOrProject,
+    company,
+    segment,
+    primaryContact,
+    email,
+    phone,
+    estRoomNights,
+    potentialValue: potentialValue || null,
+    avatarUrl: avatarUrl || null,
+    organizationId: "",
+    createdAt: new Date(),
+  };
 
   return (
     <>
@@ -62,6 +80,11 @@ export function ContactCard({
           recipientName={primaryContact || leadOrProject}
         />
       )}
+      <OutreachDialog
+        open={outreachDialogOpen}
+        onOpenChange={setOutreachDialogOpen}
+        contact={contactData}
+      />
       <Card className="p-6 hover-elevate">
         <div className="flex items-start justify-between gap-4 mb-4">
           <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -70,9 +93,13 @@ export function ContactCard({
               <AvatarFallback>{initials}</AvatarFallback>
             </Avatar>
             <div className="flex-1 overflow-hidden">
-              <h3 className="font-semibold truncate" data-testid={`text-lead-name-${leadOrProject.toLowerCase().replace(/\s+/g, '-')}`}>
+              <button
+                className="font-semibold truncate text-left w-full hover:text-primary hover-elevate rounded px-1 -ml-1"
+                onClick={() => setOutreachDialogOpen(true)}
+                data-testid={`button-contact-name-${id}`}
+              >
                 {leadOrProject}
-              </h3>
+              </button>
               <Badge className={`${segmentColors[segment] || segmentColors.Other} text-xs mt-1 inline-block`}>
                 {segment}
               </Badge>
@@ -117,7 +144,9 @@ export function ContactCard({
           {potentialValue && parseFloat(potentialValue) > 0 && (
             <div className="flex items-center gap-2 text-sm font-medium text-primary">
               <DollarSign className="h-4 w-4 shrink-0" />
-              <span data-testid="text-potential-value">${parseFloat(potentialValue).toLocaleString()}</span>
+              <span data-testid="text-potential-value">
+                Revenue Potential: ${parseFloat(potentialValue).toLocaleString()}
+              </span>
             </div>
           )}
         </div>

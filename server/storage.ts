@@ -13,6 +13,8 @@ import {
   type InsertEmailTemplate,
   type Organization,
   type InsertOrganization,
+  type UserOrganization,
+  type InsertUserOrganization,
   users,
   contacts,
   deals,
@@ -20,6 +22,7 @@ import {
   contractTemplates,
   emailTemplates,
   organizations,
+  userOrganizations,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
@@ -28,12 +31,21 @@ export interface IStorage {
   // User operations (required for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  updateUserRole(userId: string, role: string): Promise<User | undefined>;
+  updateUserCurrentOrg(userId: string, orgId: string): Promise<User | undefined>;
   
   // Organization operations
   getOrganization(id: string): Promise<Organization | undefined>;
+  getAllOrganizations(): Promise<Organization[]>;
   createOrganization(org: InsertOrganization): Promise<Organization>;
   updateOrganization(id: string, data: Partial<Organization>): Promise<Organization | undefined>;
   updateUserOrganization(userId: string, organizationId: string): Promise<User | undefined>;
+  
+  // User-Organization operations (multi-tenant)
+  getUserOrganizations(userId: string): Promise<UserOrganization[]>;
+  getOrganizationUsers(organizationId: string): Promise<UserOrganization[]>;
+  addUserToOrganization(data: InsertUserOrganization): Promise<UserOrganization>;
+  removeUserFromOrganization(userId: string, organizationId: string): Promise<void>;
   
   // Contact operations (filtered by organization)
   getAllContacts(organizationId: string): Promise<Contact[]>;
@@ -121,6 +133,48 @@ export class DbStorage implements IStorage {
       .where(eq(users.id, userId))
       .returning();
     return user;
+  }
+
+  async updateUserRole(userId: string, role: string): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({ role, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
+  async updateUserCurrentOrg(userId: string, orgId: string): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({ currentOrganizationId: orgId, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
+  async getAllOrganizations(): Promise<Organization[]> {
+    return await db.select().from(organizations);
+  }
+
+  // User-Organization operations
+  async getUserOrganizations(userId: string): Promise<UserOrganization[]> {
+    return await db.select().from(userOrganizations).where(eq(userOrganizations.userId, userId));
+  }
+
+  async getOrganizationUsers(organizationId: string): Promise<UserOrganization[]> {
+    return await db.select().from(userOrganizations).where(eq(userOrganizations.organizationId, organizationId));
+  }
+
+  async addUserToOrganization(data: InsertUserOrganization): Promise<UserOrganization> {
+    const [userOrg] = await db.insert(userOrganizations).values(data).returning();
+    return userOrg;
+  }
+
+  async removeUserFromOrganization(userId: string, organizationId: string): Promise<void> {
+    await db.delete(userOrganizations).where(
+      and(eq(userOrganizations.userId, userId), eq(userOrganizations.organizationId, organizationId))
+    );
   }
   
   // Contact operations

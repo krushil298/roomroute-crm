@@ -103,6 +103,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Team Management Routes
+  app.get("/api/team", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.organizationId) {
+        return res.status(403).json({ error: "No organization" });
+      }
+      const teamMembers = await storage.getOrganizationUsers(user.organizationId);
+      res.json(teamMembers);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch team" });
+    }
+  });
+
+  app.post("/api/team/invite", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user?.organizationId) {
+        return res.status(403).json({ error: "No organization" });
+      }
+      
+      const { email, role } = req.body;
+      if (!email) {
+        return res.status(400).json({ error: "Email is required" });
+      }
+
+      // TODO: Send invitation email via Resend
+      // For now, just return success - will implement email sending later
+      res.json({ message: "Invitation would be sent to " + email, email, role: role || "user" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to send invitation" });
+    }
+  });
+
+  app.delete("/api/team/:userId", isAuthenticated, async (req: any, res) => {
+    try {
+      const currentUserId = req.user.claims.sub;
+      const user = await storage.getUser(currentUserId);
+      if (!user?.organizationId) {
+        return res.status(403).json({ error: "No organization" });
+      }
+      await storage.removeUserFromOrganization(req.params.userId, user.organizationId);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to remove team member" });
+    }
+  });
+
+  // Super Admin Routes
+  app.get("/api/admin/organizations", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (user?.role !== "super_admin") {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      const orgs = await storage.getAllOrganizations();
+      res.json(orgs);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch organizations" });
+    }
+  });
+
+  app.post("/api/admin/switch-org", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (user?.role !== "super_admin") {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+      
+      const { organizationId } = req.body;
+      if (!organizationId) {
+        return res.status(400).json({ error: "Organization ID required" });
+      }
+
+      await storage.updateUserCurrentOrg(userId, organizationId);
+      res.json({ message: "Organization context switched", organizationId });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to switch organization" });
+    }
+  });
+
   // Contact routes
   app.get("/api/contacts", isAuthenticated, async (req: any, res) => {
     try {
