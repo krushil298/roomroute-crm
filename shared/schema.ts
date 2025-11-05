@@ -113,17 +113,34 @@ export const contacts = pgTable("contacts", {
 });
 
 // Client schema - used by frontend (organizationId omitted for security)
-export const insertContactSchema = createInsertSchema(contacts).omit({
-  id: true,
-  createdAt: true,
-  organizationId: true,
-});
+// Coerce potentialValue to accept number/string and convert to proper decimal string
+export const insertContactSchema = createInsertSchema(contacts)
+  .omit({
+    id: true,
+    createdAt: true,
+    organizationId: true,
+  })
+  .extend({
+    potentialValue: z.coerce.string().nullable().optional().transform(val => {
+      if (!val || val === "" || val === "null" || val === "undefined") return null;
+      const num = Number(val);
+      return isNaN(num) ? null : num.toFixed(2);
+    }),
+  });
 
 // Server schema - includes organizationId for database insertion
-const insertContactSchemaWithOrg = createInsertSchema(contacts).omit({
-  id: true,
-  createdAt: true,
-});
+const insertContactSchemaWithOrg = createInsertSchema(contacts)
+  .omit({
+    id: true,
+    createdAt: true,
+  })
+  .extend({
+    potentialValue: z.coerce.string().nullable().optional().transform(val => {
+      if (!val || val === "" || val === "null" || val === "undefined") return null;
+      const num = Number(val);
+      return isNaN(num) ? null : num.toFixed(2);
+    }),
+  });
 
 export type InsertContact = z.infer<typeof insertContactSchemaWithOrg>;
 export type ClientInsertContact = z.infer<typeof insertContactSchema>;

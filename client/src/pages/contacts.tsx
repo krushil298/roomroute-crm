@@ -43,6 +43,7 @@ const clientContactSchema = z.object({
   email: z.string().email().nullable().or(z.literal("")),
   phone: z.string().nullable(),
   estRoomNights: z.number().int().positive().nullable(),
+  potentialValue: z.number().positive().nullable(),
   avatarUrl: z.string().nullable(),
 });
 type ClientContact = z.infer<typeof clientContactSchema>;
@@ -77,6 +78,7 @@ export default function Contacts() {
       email: null,
       phone: null,
       estRoomNights: null,
+      potentialValue: null,
       avatarUrl: null,
     },
   });
@@ -148,6 +150,7 @@ export default function Contacts() {
       email: contact.email,
       phone: contact.phone,
       estRoomNights: contact.estRoomNights,
+      potentialValue: contact.potentialValue ? Number(contact.potentialValue) : null,
       avatarUrl: contact.avatarUrl,
     });
   };
@@ -163,6 +166,7 @@ export default function Contacts() {
       email: contact.email,
       phone: contact.phone,
       estRoomNights: contact.estRoomNights,
+      potentialValue: contact.potentialValue ? Number(contact.potentialValue) : null,
       avatarUrl: contact.avatarUrl,
     });
   };
@@ -179,6 +183,7 @@ export default function Contacts() {
       email: null,
       phone: null,
       estRoomNights: null,
+      potentialValue: null,
       avatarUrl: null,
     });
   };

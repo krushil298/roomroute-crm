@@ -10,6 +10,7 @@ import {
   insertEmailTemplateSchema,
   insertOrganizationSchema,
   updateOrganizationSchema,
+  type InsertActivity,
 } from "@shared/schema";
 
 // Helper function to get effective organization ID
@@ -502,17 +503,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!orgId) {
         return res.status(403).json({ error: "No organization" });
       }
-      console.log("POST /api/activities body:", JSON.stringify(req.body, null, 2));
       const validated = insertActivitySchema.parse(req.body);
-      console.log("Validated activity:", JSON.stringify(validated, null, 2));
       const activity = await storage.createActivity({
         ...validated,
         organizationId: orgId,
-      });
+      } as InsertActivity);
       res.status(201).json(activity);
     } catch (error) {
-      console.error("Activity validation error:", error);
-      res.status(400).json({ error: "Invalid activity data", details: error instanceof Error ? error.message : String(error) });
+      res.status(400).json({ error: "Invalid activity data" });
     }
   });
 
