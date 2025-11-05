@@ -30,13 +30,19 @@ RoomRoute is a comprehensive multi-tenant CRM designed for hotels and hospitalit
 - **API**: RESTful JSON API
 
 ### Core Features
-- **Contact Management**: CRUD operations for contacts, with search and filter capabilities. Contact cards display relevant information.
+- **Contact Management**: CRUD operations for contacts, with search and filter capabilities. Contact cards display relevant information. Clickable contact names open outreach tracking dialog.
 - **Deal Pipeline**: Tracks sales opportunities through stages (Lead → Qualified → Proposal → Negotiation → Closed) with value and probability tracking. Visual pipeline overview on the dashboard.
 - **Lead Import**: Supports bulk import via CSV and Excel (.xlsx) files or copy-paste. Features intelligent column mapping and validation for hospitality-specific fields like `lead_or_project`, `segment`, and `est_room_nights`.
 - **Template Management**:
     - **Contract Templates**: Create, edit, and use LNR (Long-term rental) and Group contract templates.
     - **Email Templates**: Pre-built templates (Introduction, Follow-up, Proposal) with automatic recipient replacement, accessible via an email composer.
 - **Revenue Calculator**: Interactive tool for estimating potential revenue based on rooms, nights, weeks, and price.
+- **Outreach Tracking**: Click contact names to log outreach attempts with date, contact method (Call, Email, Text, In-Person, LinkedIn, Other), and notes. Supports multiple attempts plus additional notes. All outreach saves to activities table with proper activity type mapping.
+- **Reports & Analytics**: Comprehensive reporting system with date range filtering and multi-format export (CSV, Excel, PDF):
+    - **Lead Activity Report**: All activities, new leads, and closed deals for selected date range
+    - **Lead Pipeline Potential Report**: Sum of all contact potential values with lead details
+    - **Deal Pipeline Report**: Closed deals and total revenue by date range
+    - **Lapsed Contacts Report**: Shows days since last contact for each lead, highlighting leads lapsed 30+ and 60+ days
 - **Dashboard**: Displays KPI metrics (Total Contacts, Active Deals, Pipeline Value, Weekly Activity), recent activity feed, pipeline overview, and quick actions.
 
 ### Database Schema Highlights
