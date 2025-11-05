@@ -493,7 +493,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const validated = insertDealSchema.parse(req.body);
       
-      // Convert expectedCloseDate string to Date if present
+      // Convert expectedCloseDate and actionDate strings to Date if present
       const dealData = {
         ...validated,
         organizationId: orgId,
@@ -501,6 +501,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? (typeof validated.expectedCloseDate === 'string' 
               ? new Date(validated.expectedCloseDate) 
               : validated.expectedCloseDate)
+          : null,
+        actionDate: validated.actionDate 
+          ? (typeof validated.actionDate === 'string' 
+              ? new Date(validated.actionDate) 
+              : validated.actionDate)
           : null,
       };
       
@@ -520,7 +525,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "No organization" });
       }
       
-      // Convert expectedCloseDate string to Date if present
+      // Convert expectedCloseDate and actionDate strings to Date if present
       const updateData = {
         ...req.body,
         expectedCloseDate: req.body.expectedCloseDate !== undefined
@@ -529,6 +534,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
               : (typeof req.body.expectedCloseDate === 'string' 
                   ? new Date(req.body.expectedCloseDate) 
                   : req.body.expectedCloseDate))
+          : undefined,
+        actionDate: req.body.actionDate !== undefined
+          ? (req.body.actionDate === null 
+              ? null 
+              : (typeof req.body.actionDate === 'string' 
+                  ? new Date(req.body.actionDate) 
+                  : req.body.actionDate))
           : undefined,
       };
       
