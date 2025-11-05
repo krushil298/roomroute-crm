@@ -62,7 +62,8 @@ export default function Reports() {
   };
 
   const generateLeadPipelineReport = () => {
-    const filteredContacts = filterByDateRange(contacts);
+    const filteredContacts = filterByDateRange(contacts)
+      .filter(c => Number(c.potentialValue || 0) > 0); // Only include contacts with value > $0
     const totalPotential = filteredContacts.reduce((sum, c) => sum + Number(c.potentialValue || 0), 0);
     
     return {
@@ -80,7 +81,8 @@ export default function Reports() {
 
   const generateDealPipelineReport = () => {
     const filteredDeals = filterByDateRange(deals);
-    const closedDeals = filteredDeals.filter(d => d.stage === "closed");
+    const closedDeals = filteredDeals
+      .filter(d => d.stage === "closed" && Number(d.value) > 0); // Only include deals with value > $0
     const totalRevenue = closedDeals.reduce((sum, d) => sum + Number(d.value), 0);
     
     return {
@@ -193,48 +195,27 @@ export default function Reports() {
       case "lead-activity": {
         const report = generateLeadActivityReport();
         return (
-          <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-4">
-              <Card className="p-4">
-                <p className="text-sm text-muted-foreground">Total Activities</p>
-                <p className="text-2xl font-bold">{report.totalActivities}</p>
-              </Card>
-              <Card className="p-4">
-                <p className="text-sm text-muted-foreground">New Leads</p>
-                <p className="text-2xl font-bold">{report.newLeads}</p>
-              </Card>
-              <Card className="p-4">
-                <p className="text-sm text-muted-foreground">Closed Deals</p>
-                <p className="text-2xl font-bold">{report.closedDeals}</p>
-              </Card>
-            </div>
-            <Card className="p-4">
-              <h3 className="font-semibold mb-4">Activity Details</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-2">Date</th>
-                      <th className="text-left p-2">Type</th>
-                      <th className="text-left p-2">Contact</th>
-                      <th className="text-left p-2">Description</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {report.activities.map((activity, idx) => (
-                      <tr key={idx} className="border-b">
-                        <td className="p-2">{activity.date}</td>
-                        <td className="p-2 capitalize">{activity.type}</td>
-                        <td className="p-2">{activity.contact}</td>
-                        <td className="p-2">{activity.description}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          <Card className="p-6">
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-xl font-semibold mb-4">Lead Activity Report</h2>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Activities</p>
+                    <p className="text-2xl font-bold">{report.totalActivities}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">New Leads</p>
+                    <p className="text-2xl font-bold">{report.newLeads}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Closed Deals</p>
+                    <p className="text-2xl font-bold">{report.closedDeals}</p>
+                  </div>
+                </div>
               </div>
-              <div className="flex gap-2 mt-4">
+              <div className="flex gap-2">
                 <Button
-                  variant="outline"
                   onClick={() => exportToCSV(report.activities, "lead-activity-report")}
                   data-testid="button-export-csv"
                 >
@@ -242,7 +223,6 @@ export default function Reports() {
                   Export CSV
                 </Button>
                 <Button
-                  variant="outline"
                   onClick={() => exportToExcel(report.activities, "lead-activity-report")}
                   data-testid="button-export-excel"
                 >
@@ -250,7 +230,6 @@ export default function Reports() {
                   Export Excel
                 </Button>
                 <Button
-                  variant="outline"
                   onClick={() => exportToPDF(report.activities, "lead-activity-report", "Lead Activity Report")}
                   data-testid="button-export-pdf"
                 >
@@ -258,54 +237,31 @@ export default function Reports() {
                   Export PDF
                 </Button>
               </div>
-            </Card>
-          </div>
+            </div>
+          </Card>
         );
       }
 
       case "lead-pipeline": {
         const report = generateLeadPipelineReport();
         return (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <Card className="p-4">
-                <p className="text-sm text-muted-foreground">Total Leads</p>
-                <p className="text-2xl font-bold">{report.totalLeads}</p>
-              </Card>
-              <Card className="p-4">
-                <p className="text-sm text-muted-foreground">Total Potential Revenue</p>
-                <p className="text-2xl font-bold">${report.totalPotential.toLocaleString()}</p>
-              </Card>
-            </div>
-            <Card className="p-4">
-              <h3 className="font-semibold mb-4">Lead Pipeline Details</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-2">Lead Name</th>
-                      <th className="text-left p-2">Segment</th>
-                      <th className="text-left p-2">Est Room Nights</th>
-                      <th className="text-left p-2">Potential Value</th>
-                      <th className="text-left p-2">Date Added</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {report.leads.map((lead, idx) => (
-                      <tr key={idx} className="border-b">
-                        <td className="p-2">{lead.name}</td>
-                        <td className="p-2">{lead.segment}</td>
-                        <td className="p-2">{lead.estRoomNights}</td>
-                        <td className="p-2">${lead.potentialValue.toLocaleString()}</td>
-                        <td className="p-2">{lead.dateAdded}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          <Card className="p-6">
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-xl font-semibold mb-4">Lead Pipeline Potential Report</h2>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Leads (with value)</p>
+                    <p className="text-2xl font-bold">{report.totalLeads}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Potential Revenue</p>
+                    <p className="text-2xl font-bold">${report.totalPotential.toLocaleString()}</p>
+                  </div>
+                </div>
               </div>
-              <div className="flex gap-2 mt-4">
+              <div className="flex gap-2">
                 <Button
-                  variant="outline"
                   onClick={() => exportToCSV(report.leads, "lead-pipeline-report")}
                   data-testid="button-export-csv"
                 >
@@ -313,7 +269,6 @@ export default function Reports() {
                   Export CSV
                 </Button>
                 <Button
-                  variant="outline"
                   onClick={() => exportToExcel(report.leads, "lead-pipeline-report")}
                   data-testid="button-export-excel"
                 >
@@ -321,7 +276,6 @@ export default function Reports() {
                   Export Excel
                 </Button>
                 <Button
-                  variant="outline"
                   onClick={() => exportToPDF(report.leads, "lead-pipeline-report", "Lead Pipeline Potential Report")}
                   data-testid="button-export-pdf"
                 >
@@ -329,52 +283,31 @@ export default function Reports() {
                   Export PDF
                 </Button>
               </div>
-            </Card>
-          </div>
+            </div>
+          </Card>
         );
       }
 
       case "deal-pipeline": {
         const report = generateDealPipelineReport();
         return (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <Card className="p-4">
-                <p className="text-sm text-muted-foreground">Total Closed Deals</p>
-                <p className="text-2xl font-bold">{report.totalDeals}</p>
-              </Card>
-              <Card className="p-4">
-                <p className="text-sm text-muted-foreground">Total Revenue</p>
-                <p className="text-2xl font-bold">${report.totalRevenue.toLocaleString()}</p>
-              </Card>
-            </div>
-            <Card className="p-4">
-              <h3 className="font-semibold mb-4">Closed Deals</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-2">Deal Title</th>
-                      <th className="text-left p-2">Contact</th>
-                      <th className="text-left p-2">Value</th>
-                      <th className="text-left p-2">Date Closed</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {report.deals.map((deal, idx) => (
-                      <tr key={idx} className="border-b">
-                        <td className="p-2">{deal.title}</td>
-                        <td className="p-2">{deal.contact}</td>
-                        <td className="p-2">${deal.value.toLocaleString()}</td>
-                        <td className="p-2">{deal.dateClosed}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          <Card className="p-6">
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-xl font-semibold mb-4">Deal Pipeline Report</h2>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Closed Deals (with value)</p>
+                    <p className="text-2xl font-bold">{report.totalDeals}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Revenue</p>
+                    <p className="text-2xl font-bold">${report.totalRevenue.toLocaleString()}</p>
+                  </div>
+                </div>
               </div>
-              <div className="flex gap-2 mt-4">
+              <div className="flex gap-2">
                 <Button
-                  variant="outline"
                   onClick={() => exportToCSV(report.deals, "deal-pipeline-report")}
                   data-testid="button-export-csv"
                 >
@@ -382,7 +315,6 @@ export default function Reports() {
                   Export CSV
                 </Button>
                 <Button
-                  variant="outline"
                   onClick={() => exportToExcel(report.deals, "deal-pipeline-report")}
                   data-testid="button-export-excel"
                 >
@@ -390,7 +322,6 @@ export default function Reports() {
                   Export Excel
                 </Button>
                 <Button
-                  variant="outline"
                   onClick={() => exportToPDF(report.deals, "deal-pipeline-report", "Deal Pipeline Report")}
                   data-testid="button-export-pdf"
                 >
@@ -398,60 +329,35 @@ export default function Reports() {
                   Export PDF
                 </Button>
               </div>
-            </Card>
-          </div>
+            </div>
+          </Card>
         );
       }
 
       case "lapsed-contacts": {
         const report = generateLapsedContactsReport();
         return (
-          <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-4">
-              <Card className="p-4">
-                <p className="text-sm text-muted-foreground">Total Contacts</p>
-                <p className="text-2xl font-bold">{report.totalContacts}</p>
-              </Card>
-              <Card className="p-4">
-                <p className="text-sm text-muted-foreground">Lapsed 30+ Days</p>
-                <p className="text-2xl font-bold">{report.lapsed30Plus}</p>
-              </Card>
-              <Card className="p-4">
-                <p className="text-sm text-muted-foreground">Lapsed 60+ Days</p>
-                <p className="text-2xl font-bold">{report.lapsed60Plus}</p>
-              </Card>
-            </div>
-            <Card className="p-4">
-              <h3 className="font-semibold mb-4">Lapsed Contact Details</h3>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-2">Lead Name</th>
-                      <th className="text-left p-2">Segment</th>
-                      <th className="text-left p-2">Last Contact</th>
-                      <th className="text-left p-2">Days Since Contact</th>
-                      <th className="text-left p-2">Primary Contact</th>
-                      <th className="text-left p-2">Email</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {report.contacts.map((contact, idx) => (
-                      <tr key={idx} className="border-b">
-                        <td className="p-2">{contact.name}</td>
-                        <td className="p-2">{contact.segment}</td>
-                        <td className="p-2">{contact.lastContactDate}</td>
-                        <td className="p-2 font-bold">{contact.daysSinceContact}</td>
-                        <td className="p-2">{contact.primaryContact}</td>
-                        <td className="p-2">{contact.email}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          <Card className="p-6">
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-xl font-semibold mb-4">Lapsed Contacts Report</h2>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Contacts</p>
+                    <p className="text-2xl font-bold">{report.totalContacts}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Lapsed 30+ Days</p>
+                    <p className="text-2xl font-bold">{report.lapsed30Plus}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Lapsed 60+ Days</p>
+                    <p className="text-2xl font-bold">{report.lapsed60Plus}</p>
+                  </div>
+                </div>
               </div>
-              <div className="flex gap-2 mt-4">
+              <div className="flex gap-2">
                 <Button
-                  variant="outline"
                   onClick={() => exportToCSV(report.contacts, "lapsed-contacts-report")}
                   data-testid="button-export-csv"
                 >
@@ -459,7 +365,6 @@ export default function Reports() {
                   Export CSV
                 </Button>
                 <Button
-                  variant="outline"
                   onClick={() => exportToExcel(report.contacts, "lapsed-contacts-report")}
                   data-testid="button-export-excel"
                 >
@@ -467,7 +372,6 @@ export default function Reports() {
                   Export Excel
                 </Button>
                 <Button
-                  variant="outline"
                   onClick={() => exportToPDF(report.contacts, "lapsed-contacts-report", "Lapsed Contacts Report")}
                   data-testid="button-export-pdf"
                 >
@@ -475,8 +379,8 @@ export default function Reports() {
                   Export PDF
                 </Button>
               </div>
-            </Card>
-          </div>
+            </div>
+          </Card>
         );
       }
     }
