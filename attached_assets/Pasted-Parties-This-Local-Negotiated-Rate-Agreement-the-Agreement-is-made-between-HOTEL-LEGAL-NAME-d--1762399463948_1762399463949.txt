@@ -1,0 +1,95 @@
+Parties
+This Local Negotiated Rate Agreement (the “Agreement”) is made between [HOTEL LEGAL NAME] d/b/a [HOTEL BRAND/PROPERTY NAME], located at [HOTEL ADDRESS] (the “Hotel”), and [COMPANY LEGAL NAME], located at [COMPANY ADDRESS] (the “Company”).
+
+Term
+
+Effective Date: [MM/DD/YYYY]
+
+Expiration Date: [MM/DD/YYYY]
+
+Renewal: Parties may renew by written agreement prior to expiration. If not renewed, this Agreement expires on the Expiration Date.
+
+Rate Program
+
+Room Types & Rates (net, non-commissionable unless stated):
+
+[ROOM TYPE A] – $[RATE] [Weekday/Weekend or All Days]
+
+[ROOM TYPE B] – $[RATE]
+
+Last Room Availability (LRA): [Yes/No] (If “Yes,” rates apply when the specified room type is available for sale. If “No,” rates are subject to blackout periods or inventory controls at Hotel’s discretion.)
+
+Blackout Dates: [List dates or “None”]
+
+Rate Basis: [Fixed $ / % off BAR / Best Available Rate / Seasonality grid]
+
+Taxes & Fees: Rates are [exclusive/inclusive] of applicable taxes, assessments, and fees.
+
+Commission: [Yes/No, % if applicable]
+
+Booking & Identification
+
+Booking Method(s): [GDS chain code / direct / brand.com / corporate portal]
+
+Rate Code(s): [e.g., LNR / CORP / Company Code]
+
+Company Identification: Guests must request the [Company Name] rate and provide [ID/Email/Business Card] upon check-in if requested.
+
+Services & Concessions
+
+Inclusions (circle or edit): Wi‑Fi / Parking / Breakfast / Laundry / Shuttle / Fitness / Meeting Room Discount.
+
+Direct Bill: [Yes/No] (If Yes, see Billing terms below.)
+
+Amenity Variances: Included services may change with notice if brand standards or local regulations require.
+
+Billing, Payment & Credit
+
+Method: [Guest pays own / Direct bill / Credit card on file].
+
+If Direct Bill: Company must complete credit application; Hotel may set a credit limit and suspend direct billing upon delinquency.
+
+Payment Terms: [Net 15/30] days from invoice date. Late amounts may incur a finance charge permitted by law.
+
+Tax-Exempt: Provide valid documentation prior to check-in; otherwise taxes apply.
+
+Incidentals: Individual guests are responsible unless otherwise stated.
+
+Cancellations & No-Shows
+
+Unless otherwise noted on the reservation confirmation, cancellations must be made [by X:00 p.m. local time, X days prior / 24–48 hours prior] to avoid a charge of [one night room & tax]. No-shows are charged [one night room & tax].
+
+Confidentiality
+Rates, codes, and terms are confidential and may not be published or shared with third parties (including OTAs) without Hotel’s written consent.
+
+Compliance
+Parties will comply with applicable laws (including anti-bribery and trade sanctions). Each party is responsible for its own employees and contractors. Hotel will handle any guest personal data in accordance with its privacy policy and applicable law.
+
+Indemnification & Liability
+Each party indemnifies the other against third‑party claims arising from its negligence or willful misconduct. Hotel’s liability to Company is limited to proven direct damages and will not exceed the amounts paid by Company under this Agreement in the [12] months preceding the claim; no indirect or consequential damages.
+
+Force Majeure
+Neither party is liable for failure or delay caused by events beyond reasonable control (e.g., natural disasters, government action, labor disputes, utility failures). Affected party will notify the other and use reasonable efforts to mitigate.
+
+Termination
+
+For Cause: Either party may terminate for material breach if not cured within [10] business days after written notice.
+
+For Convenience: Either party may terminate with [30] days’ written notice; reservations made before the termination effective date will be honored at the agreed rate.
+
+Governing Law & Venue
+This Agreement is governed by the laws of [STATE]; exclusive venue in [COUNTY, STATE] courts.
+
+Entire Agreement; Amendments; Notices
+This is the entire agreement regarding its subject matter and supersedes prior proposals. Amendments must be in writing and signed by both parties. Notices are effective when sent to the contacts below:
+
+Hotel Notices: [Name / Title / Email / Address]
+
+Company Notices: [Name / Title / Email / Address]
+
+Signatures
+Hotel: [HOTEL LEGAL NAME]
+By: ________________________ Name/Title: __________________ Date: ________
+
+Company: [COMPANY LEGAL NAME]
+By: ________________________ Name/Title: __________________ Date: ________
