@@ -184,7 +184,7 @@ export async function setupAuth(app: Express) {
     
     const logoutParams: any = {
       client_id: process.env.REPL_ID!,
-      post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
+      post_logout_redirect_uri: `${req.protocol}://${req.hostname}/switch-user`,
     };
     
     // Include id_token_hint if available to ensure proper OIDC logout

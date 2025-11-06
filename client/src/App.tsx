@@ -24,6 +24,7 @@ import AdminManagement from "@/pages/admin-management";
 import AdminOverview from "@/pages/admin-overview";
 import Landing from "@/pages/landing";
 import Onboarding from "@/pages/onboarding";
+import SwitchUser from "@/pages/switch-user";
 import NotFound from "@/pages/not-found";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
@@ -57,6 +58,11 @@ function AuthenticatedRouter() {
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
 
+  // Check if we're on the switch-user page (accessible without auth)
+  if (window.location.pathname === "/switch-user") {
+    return <SwitchUser />;
+  }
+
   // Show landing page while loading or not authenticated
   if (isLoading || !isAuthenticated) {
     return <Landing />;
@@ -75,6 +81,17 @@ function Router() {
 
   // Show authenticated app
   const handleLogout = () => {
+    // Store last logged-in user info for switch user screen
+    if (user) {
+      const userName = user.firstName && user.lastName 
+        ? `${user.firstName} ${user.lastName}`
+        : user.firstName || user.email || "User";
+      
+      localStorage.setItem("lastLoggedInUser", JSON.stringify({
+        email: user.email || "",
+        name: userName
+      }));
+    }
     window.location.href = "/api/logout";
   };
 
