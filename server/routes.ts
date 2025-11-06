@@ -38,6 +38,31 @@ function getEffectiveOrgId(user: any): string | undefined {
   return user?.organizationId;
 }
 
+// Helper function to construct sender name for emails
+// Handles null values properly and has special case for super admin
+function getSenderName(user: any): string {
+  // Special handling for super admin
+  if (user?.email === "josh.gaddis@roomroute.org" || user?.role === "super_admin") {
+    return "Josh Gaddis";
+  }
+  
+  // For other users, construct name from firstName and lastName if available
+  const firstName = user?.firstName?.trim();
+  const lastName = user?.lastName?.trim();
+  
+  if (firstName && lastName) {
+    return `${firstName} ${lastName}`;
+  } else if (firstName) {
+    return firstName;
+  } else if (lastName) {
+    return lastName;
+  } else if (user?.email) {
+    return user.email;
+  }
+  
+  return "RoomRoute Team";
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication
   await setupAuth(app);
@@ -264,12 +289,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "User not found" });
       }
 
-      // Construct sender name from inviting user with fallback
-      const firstName = user.firstName?.trim() || "";
-      const lastName = user.lastName?.trim() || "";
-      const senderName = firstName && lastName 
-        ? `${firstName} ${lastName}` 
-        : (firstName || lastName || user.email || "RoomRoute Team");
+      // Construct sender name using helper function
+      const senderName = getSenderName(user);
       
       const senderEmail = process.env.SENDER_EMAIL || "onboarding@resend.dev";
       const fromAddress = `${senderName} <${senderEmail}>`;
@@ -463,12 +484,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Organization not found" });
       }
       
-      // Construct sender info
-      const firstName = user.firstName?.trim() || "";
-      const lastName = user.lastName?.trim() || "";
-      const senderName = firstName && lastName 
-        ? `${firstName} ${lastName}` 
-        : (firstName || lastName || user.email || "RoomRoute Team");
+      // Construct sender info using helper function
+      const senderName = getSenderName(user);
       
       const senderEmail = process.env.SENDER_EMAIL || "onboarding@resend.dev";
       const fromAddress = `${senderName} <${senderEmail}>`;
@@ -1272,8 +1289,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "User not found or email not set" });
       }
       
-      // Construct sender name from user's first and last name
-      const senderName = `${user.firstName} ${user.lastName}`.trim() || "RoomRoute";
+      // Construct sender name using helper function
+      const senderName = getSenderName(user);
       const replyToEmail = user.email;
       
       // Use custom domain if configured, otherwise fall back to Resend sandbox domain
