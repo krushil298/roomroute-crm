@@ -56,6 +56,8 @@ async function upsertUser(
   const oidcSub = claims["sub"];
   const isSuperAdmin = email === "josh.gaddis@roomroute.org";
   
+  console.log(`🔐 Login attempt: ${email} (OIDC sub: ${oidcSub})`);
+  
   // Upsert the user and get the actual database user object
   const dbUser = await storage.upsertUser({
     id: oidcSub,
@@ -69,14 +71,25 @@ async function upsertUser(
 
   // Use the actual database user ID for all subsequent operations
   const userId = dbUser.id;
+  console.log(`👤 User record: ID=${userId}, orgId=${dbUser.organizationId}, role=${dbUser.role}`);
 
   // Process any pending invitations for this email
   if (email && !isSuperAdmin) {
     const invitations = await storage.getInvitationsByEmail(email);
+    console.log(`📧 Found ${invitations.length} invitation(s) for ${email}`);
     
     for (const invitation of invitations) {
+      console.log(`📩 Processing invitation: status=${invitation.status}, orgId=${invitation.organizationId}, role=${invitation.role}`);
+      
       // Only process pending invitations
       if (invitation.status !== "pending") {
+        console.log(`⏭️  Skipping invitation (status: ${invitation.status})`);
+        continue;
+      }
+      
+      // Skip invitations without an organization (super admin invited them to create their own)
+      if (!invitation.organizationId) {
+        console.log(`⏭️  Skipping invitation with no organizationId (user will create own org)`);
         continue;
       }
       
@@ -87,29 +100,38 @@ async function upsertUser(
       );
       
       if (existingMembership) {
+        console.log(`👥 Existing membership found: active=${existingMembership.active}, role=${existingMembership.role}`);
         // User was previously a member - reactivate them if needed
         if (!existingMembership.active) {
           await storage.updateUserOrganizationStatus(userId, invitation.organizationId, true);
+          console.log(`✅ Reactivated user in organization ${invitation.organizationId}`);
         }
         // Update role to match the new invitation if it changed
         // (In case they were previously a user but now invited as admin, or vice versa)
         if (existingMembership.role !== invitation.role) {
           await storage.updateUserOrganizationRole(userId, invitation.organizationId, invitation.role);
+          console.log(`✅ Updated role to ${invitation.role}`);
         }
       } else {
         // Add user to the organization with the invited role
+        console.log(`➕ Adding user to organization ${invitation.organizationId} as ${invitation.role}`);
         await storage.addUserToOrganization({
           userId,
           organizationId: invitation.organizationId,
           role: invitation.role,
           active: true,
         });
+        console.log(`✅ Successfully added to organization`);
       }
       
       // Set this as their primary organization if they don't have one
       const user = await storage.getUser(userId);
       if (!user?.organizationId) {
+        console.log(`🏢 Setting primary organizationId to ${invitation.organizationId}`);
         await storage.updateUserOrganization(userId, invitation.organizationId);
+        console.log(`✅ Primary organization set`);
+      } else {
+        console.log(`ℹ️  User already has primary organizationId: ${user.organizationId}`);
       }
       
       // Mark invitation as accepted with timestamp (keep for audit trail)
@@ -118,6 +140,11 @@ async function upsertUser(
       console.log(`✅ Auto-accepted invitation for ${email} to join organization ${invitation.organizationId}`);
     }
   }
+  
+  // Final check
+  const finalUser = await storage.getUser(userId);
+  const finalMemberships = await storage.getUserOrganizations(userId);
+  console.log(`🏁 Final state: orgId=${finalUser?.organizationId}, memberships=${finalMemberships.length}`);
 }
 
 export async function setupAuth(app: Express) {

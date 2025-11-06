@@ -432,6 +432,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/team/:userId/reactivate", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getUserFromRequest(req);
+      const orgId = getEffectiveOrgId(user);
+      if (!orgId) {
+        return res.status(403).json({ error: "No organization" });
+      }
+      
+      const targetUserId = req.params.userId;
+      await storage.updateUserOrganizationStatus(targetUserId, orgId, true);
+      
+      res.json({ success: true, message: "User reactivated successfully" });
+    } catch (error) {
+      console.error("Error reactivating user:", error);
+      res.status(500).json({ error: "Failed to reactivate user" });
+    }
+  });
+
   // Invitation Management Routes
   app.get("/api/team/invitations", isAuthenticated, async (req: any, res) => {
     try {

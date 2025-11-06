@@ -197,6 +197,30 @@ export default function Team() {
     },
   });
 
+  const reactivateMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const response = await fetch(`/api/team/${userId}/reactivate`, {
+        method: "POST",
+      });
+      if (!response.ok) throw new Error("Failed to reactivate user");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/team"] });
+      toast({
+        title: "User reactivated",
+        description: "The user has been reactivated and can now access the system",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to reactivate user",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleInvite = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) {
@@ -338,7 +362,7 @@ export default function Team() {
               </TableHeader>
               <TableBody>
                 {/* Active Team Members */}
-                {teamMembers?.map((member) => {
+                {teamMembers?.filter(m => m.active).map((member) => {
                   const displayName = member.firstName && member.lastName
                     ? `${member.firstName} ${member.lastName}`
                     : member.email || "Unknown";
@@ -366,16 +390,16 @@ export default function Team() {
                       </TableCell>
                       <TableCell>
                         <Badge
-                          variant={member.active ? "default" : "destructive"}
+                          variant="default"
                           data-testid={`badge-status-${member.userId}`}
                         >
-                          {member.active ? "Active" : "Inactive"}
+                          Active
                         </Badge>
                       </TableCell>
                       {isSuperAdmin && <TableCell>-</TableCell>}
                       {isUserAdmin && (
                         <TableCell className="text-right">
-                          {member.userId !== user?.id && member.active && (
+                          {member.userId !== user?.id && (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -467,6 +491,84 @@ export default function Team() {
           )}
         </CardContent>
       </Card>
+
+      {/* Deactivated Users Section */}
+      {isUserAdmin && teamMembers && teamMembers.filter(m => !m.active).length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Deactivated Users</CardTitle>
+            <CardDescription>
+              {teamMembers?.filter(m => !m.active).length || 0} deactivated user{teamMembers?.filter(m => !m.active).length !== 1 ? "s" : ""}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name / Email</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Status</TableHead>
+                  {isSuperAdmin && <TableHead>Organization</TableHead>}
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {teamMembers?.filter(m => !m.active).map((member) => {
+                  const displayName = member.firstName && member.lastName
+                    ? `${member.firstName} ${member.lastName}`
+                    : member.email || "Unknown";
+                  
+                  return (
+                    <TableRow key={`deactivated-user-${member.userId}`} data-testid={`row-deactivated-user-${member.userId}`}>
+                      <TableCell className="font-medium text-muted-foreground" data-testid={`text-deactivated-user-name-${member.userId}`}>
+                        {displayName}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground" data-testid={`text-deactivated-user-email-${member.userId}`}>
+                        {member.email || "-"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={member.role === "admin" ? "default" : "secondary"}
+                          data-testid={`badge-deactivated-role-${member.userId}`}
+                        >
+                          {member.role === "admin" ? (
+                            <Shield className="h-3 w-3 mr-1" />
+                          ) : (
+                            <User className="h-3 w-3 mr-1" />
+                          )}
+                          {member.role}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="destructive"
+                          data-testid={`badge-deactivated-status-${member.userId}`}
+                        >
+                          Inactive
+                        </Badge>
+                      </TableCell>
+                      {isSuperAdmin && <TableCell>-</TableCell>}
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => reactivateMutation.mutate(member.userId)}
+                          disabled={reactivateMutation.isPending}
+                          data-testid={`button-reactivate-${member.userId}`}
+                        >
+                          <RefreshCw className="h-4 w-4 mr-1" />
+                          Reactivate
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
       <AlertDialog open={!!deactivateUserId} onOpenChange={(open) => !open && setDeactivateUserId(null)}>
         <AlertDialogContent>
