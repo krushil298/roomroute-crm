@@ -45,23 +45,41 @@ type TeamMember = {
   lastName?: string;
 };
 
+type Organization = {
+  id: string;
+  name: string;
+};
+
 export default function Team() {
   const { toast } = useToast();
   const { user } = useAuth();
   const [email, setEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<"user" | "admin">("user");
+  const [selectedOrganizationId, setSelectedOrganizationId] = useState<string>("");
   const [deactivateUserId, setDeactivateUserId] = useState<string | null>(null);
+
+  const isSuperAdmin = user?.role === "super_admin";
 
   const { data: teamMembers, isLoading } = useQuery<TeamMember[]>({
     queryKey: ["/api/team"],
   });
 
+  const { data: organizations } = useQuery<Organization[]>({
+    queryKey: ["/api/admin/organizations"],
+    enabled: isSuperAdmin,
+  });
+
   const inviteMutation = useMutation({
     mutationFn: async () => {
+      const body: any = { email, role: inviteRole };
+      if (isSuperAdmin && selectedOrganizationId) {
+        body.organizationId = selectedOrganizationId;
+      }
+      
       const response = await fetch("/api/team/invite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, role: inviteRole }),
+        body: JSON.stringify(body),
       });
       if (!response.ok) throw new Error("Failed to send invitation");
       return response.json();
@@ -148,6 +166,23 @@ export default function Team() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleInvite} className="space-y-4">
+              {isSuperAdmin && (
+                <div className="space-y-2">
+                  <Label htmlFor="organization">Organization</Label>
+                  <Select value={selectedOrganizationId} onValueChange={setSelectedOrganizationId}>
+                    <SelectTrigger id="organization" data-testid="select-invite-organization">
+                      <SelectValue placeholder="Select an organization..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {organizations?.map((org) => (
+                        <SelectItem key={org.id} value={org.id} data-testid={`option-org-${org.id}`}>
+                          {org.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">Email Address</Label>
@@ -189,7 +224,7 @@ export default function Team() {
               </div>
               <Button
                 type="submit"
-                disabled={inviteMutation.isPending || !email}
+                disabled={inviteMutation.isPending || !email || (isSuperAdmin && !selectedOrganizationId)}
                 data-testid="button-invite-team"
               >
                 <UserPlus className="h-4 w-4 mr-2" />
