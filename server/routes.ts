@@ -239,6 +239,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!targetOrgId) {
           return res.status(403).json({ error: "No organization" });
         }
+        
+        // SECURITY: Only organization admins (not regular users) can invite team members
+        const userMemberships = await storage.getUserOrganizations(user.id);
+        const currentOrgMembership = userMemberships.find(m => m.organizationId === targetOrgId);
+        if (!currentOrgMembership || currentOrgMembership.role !== "admin") {
+          return res.status(403).json({ error: "Only organization admins can invite team members" });
+        }
       }
 
       // Get organization details for the invitation email
