@@ -15,6 +15,8 @@ import {
   type InsertOrganization,
   type UserOrganization,
   type InsertUserOrganization,
+  type UserInvitation,
+  type InsertUserInvitation,
   users,
   contacts,
   deals,
@@ -23,6 +25,7 @@ import {
   emailTemplates,
   organizations,
   userOrganizations,
+  userInvitations,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, ne, sql } from "drizzle-orm";
@@ -50,6 +53,11 @@ export interface IStorage {
   addUserToOrganization(data: InsertUserOrganization): Promise<UserOrganization>;
   removeUserFromOrganization(userId: string, organizationId: string): Promise<void>;
   updateUserOrganizationStatus(userId: string, organizationId: string, active: boolean): Promise<any>;
+  
+  // User Invitation operations
+  createInvitation(invitation: InsertUserInvitation): Promise<UserInvitation>;
+  getInvitationsByEmail(email: string): Promise<UserInvitation[]>;
+  deleteInvitation(id: string): Promise<void>;
   
   // Contact operations (filtered by organization)
   getAllContacts(organizationId: string): Promise<Contact[]>;
@@ -266,6 +274,20 @@ export class DbStorage implements IStorage {
         and(eq(userOrganizations.userId, userId), eq(userOrganizations.organizationId, organizationId))
       );
     return { success: true };
+  }
+
+  // User Invitation operations
+  async createInvitation(invitation: InsertUserInvitation): Promise<UserInvitation> {
+    const [inv] = await db.insert(userInvitations).values(invitation).returning();
+    return inv;
+  }
+
+  async getInvitationsByEmail(email: string): Promise<UserInvitation[]> {
+    return await db.select().from(userInvitations).where(eq(userInvitations.email, email));
+  }
+
+  async deleteInvitation(id: string): Promise<void> {
+    await db.delete(userInvitations).where(eq(userInvitations.id, id));
   }
   
   // Contact operations

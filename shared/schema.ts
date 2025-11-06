@@ -44,6 +44,19 @@ export const userOrganizations = pgTable("user_organizations", {
 export type UserOrganization = typeof userOrganizations.$inferSelect;
 export type InsertUserOrganization = typeof userOrganizations.$inferInsert;
 
+// User invitations table - tracks pending invites before first login
+export const userInvitations = pgTable("user_invitations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: varchar("email").notNull(),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id),
+  role: text("role").notNull().default("user"), // user or admin
+  invitedBy: varchar("invited_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type UserInvitation = typeof userInvitations.$inferSelect;
+export type InsertUserInvitation = typeof userInvitations.$inferInsert;
+
 // Organizations table for multi-tenancy
 export const organizations = pgTable("organizations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
