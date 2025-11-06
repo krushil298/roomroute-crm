@@ -14,6 +14,10 @@ RoomRoute is a comprehensive multi-tenant CRM designed for hotels and hospitalit
 ### Multi-Tenancy and Authentication
 The system enforces complete data isolation with `organizationId` foreign keys on all data tables, enforced server-side. Authentication is handled via Replit Auth (OIDC) supporting Google, GitHub, and email/password, with PostgreSQL-backed session management. New users undergo an onboarding flow to create an organization. A Super Admin role (`role='super_admin'`) allows switching between all organizations. Each organization supports multiple users with role-based permissions (admin/user). Deactivated users or archived organizations are blocked via middleware, preserving data while restricting access.
 
+**Invitation Tracking System**: The platform includes a comprehensive invitation tracking system. When admins or super admins invite new users, invitation records are created with status tracking (pending/accepted/cancelled). Invitations are displayed on the Team Management page alongside active users. When an invited user logs in for the first time, pending invitations are automatically accepted, adding the user to the appropriate organization with the designated role. The system maintains an audit trail with timestamps for invitation sent/accepted events and tracks who sent each invitation.
+
+**Session Management**: The logout endpoint (`/api/logout`) properly destroys sessions by calling `req.session.destroy()`, clearing session cookies, and redirecting to the OIDC logout endpoint. This ensures complete session cleanup and prevents session reuse, providing incognito-style logout behavior.
+
 ### Frontend
 - **Framework**: React with TypeScript
 - **Routing**: Wouter
@@ -43,6 +47,7 @@ The system enforces complete data isolation with `organizationId` foreign keys o
 - `organizations`: Root entity for multi-tenancy.
 - `users`: Stores user details and roles, linked to organizations.
 - `user_organizations`: Junction table for multi-user, multi-organization relationships with role and active status.
+- `user_invitations`: Tracks invitation lifecycle with status (pending/accepted/cancelled), timestamps (sentAt/acceptedAt), inviter attribution, and organization association.
 - `contacts`: Stores lead/customer data including hospitality-specific fields.
 - `deals`: Tracks sales opportunities with financial and status details.
 - `activities`, `contract_templates`, `email_templates`: All feature `organization_id` for data isolation.
