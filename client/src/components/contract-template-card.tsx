@@ -1,7 +1,13 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Copy, Eye, Pencil } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { FileText, Copy, Eye, Pencil, MoreVertical, Trash2 } from "lucide-react";
 
 interface ContractTemplateCardProps {
   name: string;
@@ -11,6 +17,7 @@ interface ContractTemplateCardProps {
   onUse?: () => void;
   onEdit?: () => void;
   onPreview?: () => void;
+  onDelete?: () => void;
 }
 
 const typeColors = {
@@ -26,6 +33,7 @@ export function ContractTemplateCard({
   onUse,
   onEdit,
   onPreview,
+  onDelete,
 }: ContractTemplateCardProps) {
   return (
     <Card className="p-6 hover-elevate">
@@ -34,12 +42,41 @@ export function ContractTemplateCard({
           <FileText className="h-5 w-5 text-muted-foreground" />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold mb-1" data-testid={`text-template-${name.toLowerCase().replace(/\s+/g, '-')}`}>
-            {name}
-          </h3>
-          <Badge className={`${typeColors[type]} text-xs mb-2`}>
-            {type.toUpperCase()}
-          </Badge>
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold mb-1" data-testid={`text-template-${name.toLowerCase().replace(/\s+/g, '-')}`}>
+                {name}
+              </h3>
+              <Badge className={`${typeColors[type]} text-xs mb-2`}>
+                {type.toUpperCase()}
+              </Badge>
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="button-template-menu">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={onEdit} data-testid="menu-edit-template">
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onPreview} data-testid="menu-preview-template">
+                  <Eye className="h-4 w-4 mr-2" />
+                  Preview
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={onDelete} 
+                  className="text-destructive focus:text-destructive"
+                  data-testid="menu-delete-template"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
           <p className="text-sm text-muted-foreground line-clamp-2">
             {description}
           </p>
