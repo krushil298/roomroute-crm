@@ -75,6 +75,11 @@ async function upsertUser(
     const invitations = await storage.getInvitationsByEmail(email);
     
     for (const invitation of invitations) {
+      // Only process pending invitations
+      if (invitation.status !== "pending") {
+        continue;
+      }
+      
       // Check if user already has a membership (active or inactive) for this organization
       const existingMemberships = await storage.getUserOrganizations(userId);
       const existingMembership = existingMemberships.find(
@@ -107,8 +112,10 @@ async function upsertUser(
         await storage.updateUserOrganization(userId, invitation.organizationId);
       }
       
-      // Delete the invitation record (it's been processed)
-      await storage.deleteInvitation(invitation.id);
+      // Mark invitation as accepted with timestamp (keep for audit trail)
+      await storage.updateInvitationStatus(invitation.id, "accepted", new Date());
+      
+      console.log(`✅ Auto-accepted invitation for ${email} to join organization ${invitation.organizationId}`);
     }
   }
 }
@@ -172,13 +179,31 @@ export async function setupAuth(app: Express) {
   });
 
   app.get("/api/logout", (req, res) => {
-    req.logout(() => {
-      res.redirect(
-        client.buildEndSessionUrl(config, {
-          client_id: process.env.REPL_ID!,
-          post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
-        }).href
-      );
+    const logoutUrl = client.buildEndSessionUrl(config, {
+      client_id: process.env.REPL_ID!,
+      post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
+    }).href;
+
+    req.logout((logoutErr) => {
+      if (logoutErr) {
+        console.error("Error during passport logout:", logoutErr);
+      }
+      
+      // Destroy the session in the database
+      req.session.destroy((destroyErr) => {
+        if (destroyErr) {
+          console.error("Error destroying session:", destroyErr);
+        }
+        
+        // Clear the session cookie from the browser
+        res.clearCookie("connect.sid", {
+          httpOnly: true,
+          secure: true,
+        });
+        
+        // Redirect to OIDC logout endpoint
+        res.redirect(logoutUrl);
+      });
     });
   });
 }
