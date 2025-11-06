@@ -411,6 +411,152 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Invitation Management Routes
+  app.get("/api/team/invitations", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getUserFromRequest(req);
+      const isSuperAdmin = user?.role === "super_admin";
+      
+      if (isSuperAdmin) {
+        // Super admins can see all invitations across all organizations
+        const allInvitations = await storage.getAllInvitations();
+        return res.json(allInvitations);
+      } else {
+        // Regular users see invitations for their organization
+        const orgId = getEffectiveOrgId(user);
+        if (!orgId) {
+          return res.status(403).json({ error: "No organization" });
+        }
+        const invitations = await storage.getInvitationsByOrganization(orgId);
+        return res.json(invitations);
+      }
+    } catch (error) {
+      console.error("Error fetching invitations:", error);
+      res.status(500).json({ error: "Failed to fetch invitations" });
+    }
+  });
+
+  app.post("/api/team/invitations/:id/resend", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getUserFromRequest(req);
+      const invitationId = req.params.id;
+      
+      // Get the invitation to resend
+      const allInvitations = await storage.getAllInvitations();
+      const invitation = allInvitations.find(inv => inv.id === invitationId);
+      
+      if (!invitation) {
+        return res.status(404).json({ error: "Invitation not found" });
+      }
+      
+      // Check permissions
+      const isSuperAdmin = user?.role === "super_admin";
+      const orgId = getEffectiveOrgId(user);
+      
+      if (!isSuperAdmin && invitation.organizationId !== orgId) {
+        return res.status(403).json({ error: "Permission denied" });
+      }
+      
+      // Get organization details
+      const org = await storage.getOrganization(invitation.organizationId);
+      if (!org) {
+        return res.status(404).json({ error: "Organization not found" });
+      }
+      
+      // Construct sender info
+      const firstName = user.firstName?.trim() || "";
+      const lastName = user.lastName?.trim() || "";
+      const senderName = firstName && lastName 
+        ? `${firstName} ${lastName}` 
+        : (firstName || lastName || user.email || "RoomRoute Team");
+      
+      const senderEmail = process.env.SENDER_EMAIL || "onboarding@resend.dev";
+      const fromAddress = `${senderName} <${senderEmail}>`;
+      const replyToEmail = user.email || undefined;
+      
+      // Create email content
+      const baseUrl = process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : 'http://localhost:5000';
+      const loginUrl = `${baseUrl}/login`;
+      
+      const subject = `You're invited to join ${org.name} on RoomRoute`;
+      const htmlBody = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2>You've been invited to join ${org.name}</h2>
+          <p>Hi,</p>
+          <p>${senderName} has invited you to join <strong>${org.name}</strong> on RoomRoute as a <strong>${invitation.role}</strong>.</p>
+          <p>RoomRoute is a CRM platform designed for hotels and hospitality businesses to manage contacts, deals, and sales pipelines.</p>
+          <p style="margin: 30px 0;">
+            <a href="${loginUrl}" style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              Log in to RoomRoute
+            </a>
+          </p>
+          <p>If you don't have an account yet, you can sign up using this email address (${invitation.email}).</p>
+          <p>Once you log in, you'll automatically be added to ${org.name}.</p>
+          <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
+          <p style="color: #6b7280; font-size: 14px;">
+            If you have any questions, reply to this email to reach ${senderName}.
+          </p>
+        </div>
+      `;
+      
+      if (!process.env.RESEND_API_KEY) {
+        console.log("Resend invitation email (Resend not configured):", { 
+          from: fromAddress,
+          to: invitation.email,
+          subject,
+        });
+        return res.json({ success: true, message: `Invitation resend logged for ${invitation.email} (Resend not configured)` });
+      }
+      
+      const { Resend } = await import("resend");
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      
+      await resend.emails.send({
+        from: fromAddress,
+        replyTo: replyToEmail,
+        to: [invitation.email],
+        subject: subject,
+        html: htmlBody,
+      });
+      
+      console.log(`✅ Invitation resent - To: ${invitation.email} | Org: ${org.name}`);
+      res.json({ success: true, message: `Invitation resent to ${invitation.email}` });
+    } catch (error: any) {
+      console.error("Error resending invitation:", error);
+      res.status(500).json({ error: "Failed to resend invitation", details: error.message });
+    }
+  });
+
+  app.delete("/api/team/invitations/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getUserFromRequest(req);
+      const invitationId = req.params.id;
+      
+      // Get the invitation to check permissions
+      const allInvitations = await storage.getAllInvitations();
+      const invitation = allInvitations.find(inv => inv.id === invitationId);
+      
+      if (!invitation) {
+        return res.status(404).json({ error: "Invitation not found" });
+      }
+      
+      // Check permissions
+      const isSuperAdmin = user?.role === "super_admin";
+      const orgId = getEffectiveOrgId(user);
+      
+      if (!isSuperAdmin && invitation.organizationId !== orgId) {
+        return res.status(403).json({ error: "Permission denied" });
+      }
+      
+      // Cancel the invitation
+      await storage.cancelInvitation(invitationId);
+      res.json({ success: true, message: "Invitation cancelled" });
+    } catch (error) {
+      console.error("Error cancelling invitation:", error);
+      res.status(500).json({ error: "Failed to cancel invitation" });
+    }
+  });
+
   // Super Admin Routes
   app.get("/api/admin/organizations", isAuthenticated, async (req: any, res) => {
     try {

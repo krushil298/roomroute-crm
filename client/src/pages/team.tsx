@@ -23,7 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
-import { UserPlus, Mail, Shield, User, Ban } from "lucide-react";
+import { UserPlus, Mail, Shield, User, Ban, RefreshCw, X, Clock } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -50,6 +50,21 @@ type Organization = {
   name: string;
 };
 
+type Invitation = {
+  id: string;
+  email: string;
+  role: "user" | "admin";
+  status: string;
+  sentAt: string;
+  acceptedAt?: string;
+  organizationId: string;
+  invitedBy: string;
+  inviterFirstName?: string;
+  inviterLastName?: string;
+  inviterEmail?: string;
+  orgName?: string; // For super admins viewing all invitations
+};
+
 export default function Team() {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -62,6 +77,10 @@ export default function Team() {
 
   const { data: teamMembers, isLoading } = useQuery<TeamMember[]>({
     queryKey: ["/api/team"],
+  });
+
+  const { data: invitations, isLoading: invitationsLoading } = useQuery<Invitation[]>({
+    queryKey: ["/api/team/invitations"],
   });
 
   const { data: organizations } = useQuery<Organization[]>({
@@ -87,6 +106,7 @@ export default function Team() {
       return response.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/team/invitations"] });
       toast({
         title: "Invitation sent",
         description: `An invitation has been sent to ${email}`,
@@ -126,6 +146,54 @@ export default function Team() {
         variant: "destructive",
       });
       setDeactivateUserId(null);
+    },
+  });
+
+  const resendInvitationMutation = useMutation({
+    mutationFn: async (invitationId: string) => {
+      const response = await fetch(`/api/team/invitations/${invitationId}/resend`, {
+        method: "POST",
+      });
+      if (!response.ok) throw new Error("Failed to resend invitation");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/team/invitations"] });
+      toast({
+        title: "Invitation resent",
+        description: "The invitation email has been resent",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to resend invitation",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const cancelInvitationMutation = useMutation({
+    mutationFn: async (invitationId: string) => {
+      const response = await fetch(`/api/team/invitations/${invitationId}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) throw new Error("Failed to cancel invitation");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/team/invitations"] });
+      toast({
+        title: "Invitation cancelled",
+        description: "The invitation has been cancelled",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to cancel invitation",
+        variant: "destructive",
+      });
     },
   });
 
@@ -242,39 +310,41 @@ export default function Team() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Team Members</CardTitle>
+          <CardTitle>Team Members & Invitations</CardTitle>
           <CardDescription>
-            {teamMembers?.length || 0} member{teamMembers?.length !== 1 ? "s" : ""}
+            {teamMembers?.length || 0} active member{teamMembers?.length !== 1 ? "s" : ""} • {invitations?.filter(inv => inv.status === "pending").length || 0} pending invitation{invitations?.filter(inv => inv.status === "pending").length !== 1 ? "s" : ""}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {(isLoading || invitationsLoading) ? (
             <div className="text-center py-8 text-muted-foreground">
               Loading team members...
             </div>
-          ) : !teamMembers || teamMembers.length === 0 ? (
+          ) : (!teamMembers || teamMembers.length === 0) && (!invitations || invitations.length === 0) ? (
             <div className="text-center py-8 text-muted-foreground">
-              No team members found
+              No team members or invitations found
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
+                  <TableHead>Name / Email</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Status</TableHead>
+                  {isSuperAdmin && <TableHead>Organization</TableHead>}
                   {isUserAdmin && <TableHead className="text-right">Actions</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {teamMembers.map((member) => {
+                {/* Active Team Members */}
+                {teamMembers?.map((member) => {
                   const displayName = member.firstName && member.lastName
                     ? `${member.firstName} ${member.lastName}`
                     : member.email || "Unknown";
                   
                   return (
-                    <TableRow key={member.userId} data-testid={`row-user-${member.userId}`}>
+                    <TableRow key={`user-${member.userId}`} data-testid={`row-user-${member.userId}`}>
                       <TableCell className="font-medium" data-testid={`text-user-name-${member.userId}`}>
                         {displayName}
                       </TableCell>
@@ -302,6 +372,7 @@ export default function Team() {
                           {member.active ? "Active" : "Inactive"}
                         </Badge>
                       </TableCell>
+                      {isSuperAdmin && <TableCell>-</TableCell>}
                       {isUserAdmin && (
                         <TableCell className="text-right">
                           {member.userId !== user?.id && member.active && (
@@ -315,6 +386,77 @@ export default function Team() {
                               Deactivate
                             </Button>
                           )}
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  );
+                })}
+                
+                {/* Pending Invitations */}
+                {invitations?.filter(inv => inv.status === "pending").map((invitation) => {
+                  const inviterName = invitation.inviterFirstName && invitation.inviterLastName
+                    ? `${invitation.inviterFirstName} ${invitation.inviterLastName}`
+                    : invitation.inviterEmail || "Unknown";
+                  
+                  return (
+                    <TableRow key={`invitation-${invitation.id}`} data-testid={`row-invitation-${invitation.id}`}>
+                      <TableCell className="font-medium text-muted-foreground" data-testid={`text-invitation-email-${invitation.id}`}>
+                        {invitation.email}
+                        <div className="text-xs mt-1">Invited by {inviterName}</div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{invitation.email}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={invitation.role === "admin" ? "default" : "secondary"}
+                          data-testid={`badge-role-invitation-${invitation.id}`}
+                        >
+                          {invitation.role === "admin" ? (
+                            <Shield className="h-3 w-3 mr-1" />
+                          ) : (
+                            <User className="h-3 w-3 mr-1" />
+                          )}
+                          {invitation.role}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className="text-amber-600 dark:text-amber-400"
+                          data-testid={`badge-status-invitation-${invitation.id}`}
+                        >
+                          <Clock className="h-3 w-3 mr-1" />
+                          Pending
+                        </Badge>
+                      </TableCell>
+                      {isSuperAdmin && (
+                        <TableCell className="text-muted-foreground text-sm">
+                          {invitation.orgName || "-"}
+                        </TableCell>
+                      )}
+                      {isUserAdmin && (
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => resendInvitationMutation.mutate(invitation.id)}
+                              disabled={resendInvitationMutation.isPending}
+                              data-testid={`button-resend-invitation-${invitation.id}`}
+                            >
+                              <RefreshCw className="h-4 w-4 mr-1" />
+                              Resend
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => cancelInvitationMutation.mutate(invitation.id)}
+                              disabled={cancelInvitationMutation.isPending}
+                              data-testid={`button-cancel-invitation-${invitation.id}`}
+                            >
+                              <X className="h-4 w-4 mr-1" />
+                              Cancel
+                            </Button>
+                          </div>
                         </TableCell>
                       )}
                     </TableRow>
