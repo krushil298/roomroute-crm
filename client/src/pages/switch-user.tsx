@@ -21,12 +21,13 @@ export default function SwitchUser() {
   }, []);
 
   const handleSameUser = () => {
-    setLocation("/login");
+    window.location.href = "/api/login";
   };
 
   const handleDifferentUser = () => {
     // Clear last user info
     localStorage.removeItem("lastLoggedInUser");
+    setLastUser(null);
   };
 
   return (
