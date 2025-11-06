@@ -51,11 +51,22 @@ export const userInvitations = pgTable("user_invitations", {
   organizationId: varchar("organization_id").notNull().references(() => organizations.id),
   role: text("role").notNull().default("user"), // user or admin
   invitedBy: varchar("invited_by").notNull().references(() => users.id),
+  status: text("status").notNull().default("pending"), // pending, accepted, cancelled, expired
+  sentAt: timestamp("sent_at").defaultNow().notNull(),
+  acceptedAt: timestamp("accepted_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const insertUserInvitationSchema = createInsertSchema(userInvitations).omit({
+  id: true,
+  createdAt: true,
+  sentAt: true,
+  acceptedAt: true,
+  status: true,
+});
+
 export type UserInvitation = typeof userInvitations.$inferSelect;
-export type InsertUserInvitation = typeof userInvitations.$inferInsert;
+export type InsertUserInvitation = z.infer<typeof insertUserInvitationSchema>;
 
 // Organizations table for multi-tenancy
 export const organizations = pgTable("organizations", {

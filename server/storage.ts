@@ -59,6 +59,10 @@ export interface IStorage {
   // User Invitation operations
   createInvitation(invitation: InsertUserInvitation): Promise<UserInvitation>;
   getInvitationsByEmail(email: string): Promise<UserInvitation[]>;
+  getInvitationsByOrganization(organizationId: string): Promise<any[]>; // Returns joined data with inviter details
+  getAllInvitations(): Promise<any[]>; // For super admins - returns all pending invitations across all orgs
+  updateInvitationStatus(id: string, status: string, acceptedAt?: Date): Promise<UserInvitation | undefined>;
+  cancelInvitation(id: string): Promise<void>;
   deleteInvitation(id: string): Promise<void>;
   
   // Contact operations (filtered by organization)
@@ -304,6 +308,67 @@ export class DbStorage implements IStorage {
 
   async deleteInvitation(id: string): Promise<void> {
     await db.delete(userInvitations).where(eq(userInvitations.id, id));
+  }
+
+  async getInvitationsByOrganization(organizationId: string): Promise<any[]> {
+    const results = await db
+      .select({
+        id: userInvitations.id,
+        email: userInvitations.email,
+        role: userInvitations.role,
+        status: userInvitations.status,
+        sentAt: userInvitations.sentAt,
+        acceptedAt: userInvitations.acceptedAt,
+        organizationId: userInvitations.organizationId,
+        invitedBy: userInvitations.invitedBy,
+        inviterFirstName: users.firstName,
+        inviterLastName: users.lastName,
+        inviterEmail: users.email,
+      })
+      .from(userInvitations)
+      .leftJoin(users, eq(userInvitations.invitedBy, users.id))
+      .where(eq(userInvitations.organizationId, organizationId));
+    
+    return results;
+  }
+
+  async getAllInvitations(): Promise<any[]> {
+    const results = await db
+      .select({
+        id: userInvitations.id,
+        email: userInvitations.email,
+        role: userInvitations.role,
+        status: userInvitations.status,
+        sentAt: userInvitations.sentAt,
+        acceptedAt: userInvitations.acceptedAt,
+        organizationId: userInvitations.organizationId,
+        invitedBy: userInvitations.invitedBy,
+        inviterFirstName: users.firstName,
+        inviterLastName: users.lastName,
+        inviterEmail: users.email,
+        orgName: organizations.name,
+      })
+      .from(userInvitations)
+      .leftJoin(users, eq(userInvitations.invitedBy, users.id))
+      .leftJoin(organizations, eq(userInvitations.organizationId, organizations.id));
+    
+    return results;
+  }
+
+  async updateInvitationStatus(id: string, status: string, acceptedAt?: Date): Promise<UserInvitation | undefined> {
+    const [updated] = await db
+      .update(userInvitations)
+      .set({ status, acceptedAt })
+      .where(eq(userInvitations.id, id))
+      .returning();
+    return updated;
+  }
+
+  async cancelInvitation(id: string): Promise<void> {
+    await db
+      .update(userInvitations)
+      .set({ status: "cancelled" })
+      .where(eq(userInvitations.id, id));
   }
   
   // Contact operations
