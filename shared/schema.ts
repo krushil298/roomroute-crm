@@ -61,6 +61,8 @@ export type InsertUserInvitation = typeof userInvitations.$inferInsert;
 export const organizations = pgTable("organizations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
+  legalName: text("legal_name"), // Full legal name for contracts
+  brandName: text("brand_name"), // Brand/property name (e.g., "Marriott Courtyard Downtown")
   active: boolean("active").notNull().default(true), // Archive capability
   // Hotel Profile Information
   numberOfRooms: integer("number_of_rooms"),
@@ -87,6 +89,8 @@ export const insertOrganizationSchema = createInsertSchema(organizations).omit({
 
 export const updateOrganizationSchema = z.object({
   name: z.string().min(1).optional(),
+  legalName: z.string().optional().or(z.literal("")).nullable(),
+  brandName: z.string().optional().or(z.literal("")).nullable(),
   numberOfRooms: z.preprocess(
     (val) => val === "" || val === null || val === undefined ? null : Number(val),
     z.number().int().positive().nullable().optional()
@@ -116,6 +120,10 @@ export const contacts = pgTable("contacts", {
   organizationId: varchar("organization_id").notNull().references(() => organizations.id),
   leadOrProject: text("lead_or_project").notNull(),
   company: text("company"),
+  companyAddress: text("company_address"),
+  companyCity: text("company_city"),
+  companyState: text("company_state"),
+  companyZipCode: text("company_zip_code"),
   segment: text("segment").notNull(),
   primaryContact: text("primary_contact"),
   phone: text("phone"),
