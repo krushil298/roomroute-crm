@@ -1054,6 +1054,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Seed starter templates (admin only)
+  app.post("/api/templates/seed", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getUserFromRequest(req);
+      const orgId = getEffectiveOrgId(user);
+      if (!orgId) {
+        return res.status(403).json({ error: "No organization" });
+      }
+
+      // Check if templates already exist for this organization
+      const existingContracts = await storage.getAllContractTemplates(orgId);
+      const existingEmails = await storage.getAllEmailTemplates(orgId);
+      
+      if (existingContracts.length > 0 || existingEmails.length > 0) {
+        return res.status(400).json({ 
+          error: "Templates already exist for this organization",
+          existingContracts: existingContracts.length,
+          existingEmails: existingEmails.length
+        });
+      }
+
+      const { SEED_CONTRACT_TEMPLATES, SEED_EMAIL_TEMPLATES } = await import("./seedTemplates");
+      
+      // Insert contract templates
+      const contractPromises = SEED_CONTRACT_TEMPLATES.map(template =>
+        storage.createContractTemplate({
+          organizationId: orgId,
+          name: template.name,
+          type: template.type,
+          description: template.description,
+          content: template.content,
+        })
+      );
+      
+      // Insert email templates
+      const emailPromises = SEED_EMAIL_TEMPLATES.map(template =>
+        storage.createEmailTemplate({
+          organizationId: orgId,
+          name: template.name,
+          subject: template.subject!,
+          body: template.content,
+        })
+      );
+      
+      await Promise.all([...contractPromises, ...emailPromises]);
+      
+      res.json({ 
+        success: true, 
+        message: "Starter templates created successfully",
+        contractTemplates: SEED_CONTRACT_TEMPLATES.length,
+        emailTemplates: SEED_EMAIL_TEMPLATES.length
+      });
+    } catch (error) {
+      console.error("Template seeding error:", error);
+      res.status(500).json({ error: "Failed to seed templates" });
+    }
+  });
+
   // Email sending route
   app.post("/api/send-email", isAuthenticated, async (req: any, res) => {
     try {

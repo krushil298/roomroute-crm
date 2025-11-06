@@ -99,6 +99,25 @@ export default function Templates() {
     },
   });
 
+  const seedTemplatesMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/templates/seed"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contract-templates"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/email-templates"] });
+      toast({
+        title: "Templates created",
+        description: "Professional starter templates have been added to your organization",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create starter templates",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleCreateTemplate = () => {
     setCreateDialogType(activeTab === "email" ? "email" : "contract");
     setCreateDialogOpen(true);
@@ -154,19 +173,33 @@ export default function Templates() {
     t.body.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const hasNoTemplates = contractTemplates.length === 0 && emailTemplates.length === 0;
+
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-semibold mb-1">Templates</h1>
           <p className="text-sm text-muted-foreground">
             Manage your contract and email templates for LNR and group bookings
           </p>
         </div>
-        <Button onClick={handleCreateTemplate} data-testid="button-create-template">
-          <Plus className="h-4 w-4 mr-2" />
-          Create Template
-        </Button>
+        <div className="flex gap-2">
+          {hasNoTemplates && !loadingContracts && !loadingEmails && (
+            <Button 
+              onClick={() => seedTemplatesMutation.mutate()} 
+              variant="outline"
+              disabled={seedTemplatesMutation.isPending}
+              data-testid="button-seed-templates"
+            >
+              {seedTemplatesMutation.isPending ? "Loading..." : "Load Starter Templates"}
+            </Button>
+          )}
+          <Button onClick={handleCreateTemplate} data-testid="button-create-template">
+            <Plus className="h-4 w-4 mr-2" />
+            Create Template
+          </Button>
+        </div>
       </div>
 
       <div className="relative">
