@@ -182,9 +182,14 @@ export async function setupAuth(app: Express) {
     const user = req.user as any;
     const idToken = user?.access_token; // Use access token as hint
     
+    // Construct base URL properly for both dev and production
+    const baseUrl = process.env.REPLIT_DOMAINS 
+      ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
+      : `${req.protocol}://${req.hostname}`;
+    
     const logoutParams: any = {
       client_id: process.env.REPL_ID!,
-      post_logout_redirect_uri: `${req.protocol}://${req.hostname}/switch-user`,
+      post_logout_redirect_uri: `${baseUrl}/switch-user`,
     };
     
     // Include id_token_hint if available to ensure proper OIDC logout
