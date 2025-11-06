@@ -72,7 +72,9 @@ export default function Team() {
   const inviteMutation = useMutation({
     mutationFn: async () => {
       const body: any = { email, role: inviteRole };
-      if (isSuperAdmin && selectedOrganizationId) {
+      // Only include organizationId if super admin selected an actual organization
+      // "__none__" means "no organization - user will create their own"
+      if (isSuperAdmin && selectedOrganizationId && selectedOrganizationId !== "__none__") {
         body.organizationId = selectedOrganizationId;
       }
       
@@ -168,12 +170,15 @@ export default function Team() {
             <form onSubmit={handleInvite} className="space-y-4">
               {isSuperAdmin && (
                 <div className="space-y-2">
-                  <Label htmlFor="organization">Organization</Label>
-                  <Select value={selectedOrganizationId} onValueChange={setSelectedOrganizationId}>
+                  <Label htmlFor="organization">Organization (Optional)</Label>
+                  <Select value={selectedOrganizationId || "__none__"} onValueChange={setSelectedOrganizationId}>
                     <SelectTrigger id="organization" data-testid="select-invite-organization">
-                      <SelectValue placeholder="Select an organization..." />
+                      <SelectValue placeholder="No organization - user will create their own" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="__none__" data-testid="option-org-none">
+                        No organization - user will create their own
+                      </SelectItem>
                       {organizations?.map((org) => (
                         <SelectItem key={org.id} value={org.id} data-testid={`option-org-${org.id}`}>
                           {org.name}
@@ -224,7 +229,7 @@ export default function Team() {
               </div>
               <Button
                 type="submit"
-                disabled={inviteMutation.isPending || !email || (isSuperAdmin && !selectedOrganizationId)}
+                disabled={inviteMutation.isPending || !email}
                 data-testid="button-invite-team"
               >
                 <UserPlus className="h-4 w-4 mr-2" />

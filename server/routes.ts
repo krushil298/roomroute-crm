@@ -226,13 +226,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Determine target organization
       let targetOrgId: string | undefined;
+      let org: any = null;
       
       if (isSuperAdmin) {
-        // Super admin MUST provide organizationId
-        if (!organizationId) {
-          return res.status(400).json({ error: "Super admin must specify organizationId" });
-        }
+        // Super admin can optionally provide organizationId
+        // If provided: invite to existing org (auto-assign on login)
+        // If not provided: invite as new user (they'll create their own org)
         targetOrgId = organizationId;
+        if (targetOrgId) {
+          org = await storage.getOrganization(targetOrgId);
+          if (!org) {
+            return res.status(404).json({ error: "Organization not found" });
+          }
+        }
       } else {
         // Regular users: use their effective org (ignore organizationId from request for security)
         targetOrgId = getEffectiveOrgId(user);
@@ -246,12 +252,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!currentOrgMembership || currentOrgMembership.role !== "admin") {
           return res.status(403).json({ error: "Only organization admins can invite team members" });
         }
+        
+        // Get organization details for the invitation email
+        org = await storage.getOrganization(targetOrgId);
+        if (!org) {
+          return res.status(404).json({ error: "Organization not found" });
+        }
       }
 
-      // Get organization details for the invitation email
-      const org = await storage.getOrganization(targetOrgId);
-      if (!org || !user) {
-        return res.status(404).json({ error: "Organization or user not found" });
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
       }
 
       // Construct sender name from inviting user with fallback
@@ -265,30 +275,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const fromAddress = `${senderName} <${senderEmail}>`;
       const replyToEmail = user.email || undefined;
       
-      // Create invitation email content
-      const subject = `You're invited to join ${org.name} on RoomRoute`;
+      // Create invitation email content - different for org invites vs general invites
       const baseUrl = process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : 'http://localhost:5000';
       const loginUrl = `${baseUrl}/login`;
       
-      const htmlBody = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2>You've been invited to join ${org.name}</h2>
-          <p>Hi,</p>
-          <p>${senderName} has invited you to join <strong>${org.name}</strong> on RoomRoute as a <strong>${role || 'user'}</strong>.</p>
-          <p>RoomRoute is a CRM platform designed for hotels and hospitality businesses to manage contacts, deals, and sales pipelines.</p>
-          <p style="margin: 30px 0;">
-            <a href="${loginUrl}" style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              Log in to RoomRoute
-            </a>
-          </p>
-          <p>If you don't have an account yet, you can sign up using this email address (${email}).</p>
-          <p>Once you log in, you'll automatically be added to ${org.name}.</p>
-          <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
-          <p style="color: #6b7280; font-size: 14px;">
-            If you have any questions, reply to this email to reach ${senderName}.
-          </p>
-        </div>
-      `;
+      let subject: string;
+      let htmlBody: string;
+      
+      if (org) {
+        // Invite to specific organization
+        subject = `You're invited to join ${org.name} on RoomRoute`;
+        htmlBody = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2>You've been invited to join ${org.name}</h2>
+            <p>Hi,</p>
+            <p>${senderName} has invited you to join <strong>${org.name}</strong> on RoomRoute as a <strong>${role || 'user'}</strong>.</p>
+            <p>RoomRoute is a CRM platform designed for hotels and hospitality businesses to manage contacts, deals, and sales pipelines.</p>
+            <p style="margin: 30px 0;">
+              <a href="${loginUrl}" style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+                Log in to RoomRoute
+              </a>
+            </p>
+            <p>If you don't have an account yet, you can sign up using this email address (${email}).</p>
+            <p>Once you log in, you'll automatically be added to ${org.name}.</p>
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
+            <p style="color: #6b7280; font-size: 14px;">
+              If you have any questions, reply to this email to reach ${senderName}.
+            </p>
+          </div>
+        `;
+      } else {
+        // General invitation (super admin inviting new user without org)
+        subject = `You're invited to RoomRoute`;
+        htmlBody = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2>You've been invited to RoomRoute</h2>
+            <p>Hi,</p>
+            <p>${senderName} has invited you to join RoomRoute.</p>
+            <p>RoomRoute is a CRM platform designed for hotels and hospitality businesses to manage contacts, deals, and sales pipelines.</p>
+            <p style="margin: 30px 0;">
+              <a href="${loginUrl}" style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+                Log in to RoomRoute
+              </a>
+            </p>
+            <p>If you don't have an account yet, you can sign up using this email address (${email}).</p>
+            <p>Once you log in, you'll be able to set up your hotel organization and start managing your contacts and deals.</p>
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
+            <p style="color: #6b7280; font-size: 14px;">
+              If you have any questions, reply to this email to reach ${senderName}.
+            </p>
+          </div>
+        `;
+      }
 
       if (!process.env.RESEND_API_KEY) {
         console.log("Team invitation email (Resend not configured):", { 
@@ -296,16 +334,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           to: email,
           subject,
           role: role || 'user',
-          organization: org.name
+          organization: org?.name || 'No organization (general invite)'
         });
         
-        // Create invitation record even in development mode
-        await storage.createInvitation({
-          email,
-          organizationId: targetOrgId,
-          role: role || "user",
-          invitedBy: user.id,
-        });
+        // Only create invitation record if inviting to specific organization
+        if (targetOrgId) {
+          await storage.createInvitation({
+            email,
+            organizationId: targetOrgId,
+            role: role || "user",
+            invitedBy: user.id,
+          });
+        }
         
         return res.json({ 
           success: true, 
@@ -326,15 +366,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         html: htmlBody,
       });
 
-      // Create invitation record for auto-assignment on first login
-      await storage.createInvitation({
-        email,
-        organizationId: targetOrgId,
-        role: role || "user",
-        invitedBy: user.id,
-      });
+      // Only create invitation record if inviting to specific organization
+      // General invites (no org) will go through normal onboarding
+      if (targetOrgId) {
+        await storage.createInvitation({
+          email,
+          organizationId: targetOrgId,
+          role: role || "user",
+          invitedBy: user.id,
+        });
+      }
 
-      console.log(`✅ Team invitation sent - From: ${fromAddress} | To: ${email} | Org: ${org.name} | Role: ${role || 'user'}`);
+      const logMessage = targetOrgId 
+        ? `✅ Team invitation sent - From: ${fromAddress} | To: ${email} | Org: ${org.name} | Role: ${role || 'user'}`
+        : `✅ General invitation sent - From: ${fromAddress} | To: ${email} | (User will create their own organization)`;
+      console.log(logMessage);
+      
       res.json({ 
         success: true, 
         message: `Invitation sent to ${email}`,
