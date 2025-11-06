@@ -18,6 +18,8 @@ The system enforces complete data isolation with `organizationId` foreign keys o
 
 **Session Management**: The logout endpoint (`/api/logout`) properly destroys sessions by calling `req.session.destroy()`, clearing session cookies, and redirecting to the OIDC logout endpoint. This ensures complete session cleanup and prevents session reuse, providing incognito-style logout behavior.
 
+**Switch User Flow**: Designed for shared computer environments common in hotels, the system implements a switch user confirmation screen. When users log out, their information (name and email) is stored in localStorage before session destruction, and they are redirected to `/switch-user`. This page offers two options: (1) "Yes, I'm [Name]" to quickly re-authenticate as the same user, or (2) "I understand - Clear last user info" to clear the stored information and prepare for a different user login. The UI dynamically updates based on localStorage state, showing user-specific options when a last user is detected or generic messaging when cleared. This feature addresses the common hotel scenario where multiple staff members share workstations throughout the day.
+
 ### Frontend
 - **Framework**: React with TypeScript
 - **Routing**: Wouter
