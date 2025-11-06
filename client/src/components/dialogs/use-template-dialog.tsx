@@ -44,11 +44,11 @@ export function UseTemplateDialog({
   });
 
   const { data: organization } = useQuery<Organization>({
-    queryKey: ["/api/organization"],
+    queryKey: ["/api/organization/profile"],
   });
 
   const { data: user } = useQuery<User>({
-    queryKey: ["/api/user"],
+    queryKey: ["/api/auth/user"],
   });
 
   useEffect(() => {
