@@ -14,6 +14,20 @@ import {
   type InsertActivity,
 } from "@shared/schema";
 
+// Helper function to get user from request, with email fallback
+// Handles cases where OIDC sub != database user ID
+async function getUserFromRequest(req: any): Promise<any> {
+  const userId = req.user.claims.sub;
+  const userEmail = req.user.claims.email;
+  
+  // Try ID first, fall back to email
+  let user = await storage.getUser(userId);
+  if (!user && userEmail) {
+    user = await storage.getUserByEmail(userEmail);
+  }
+  return user;
+}
+
 // Helper function to get effective organization ID
 // For super_admin: use currentOrganizationId
 // For regular users: use organizationId
@@ -32,7 +46,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const userEmail = req.user.claims.email;
+      
+      // Try to get user by ID first, then fall back to email
+      // This handles the case where OIDC sub changes but email stays the same
       let user = await storage.getUser(userId);
+      if (!user && userEmail) {
+        user = await storage.getUserByEmail(userEmail);
+      }
+      
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
       
       // For super admins, check if their currentOrganizationId points to an archived org
       if (user?.role === "super_admin" && user.currentOrganizationId) {
@@ -42,8 +67,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!currentOrg || currentOrg.active === false) {
           const activeOrgs = await storage.getAllOrganizations();
           if (activeOrgs.length > 0) {
-            await storage.updateUserCurrentOrg(userId, activeOrgs[0].id);
-            user = await storage.getUser(userId);
+            await storage.updateUserCurrentOrg(user.id, activeOrgs[0].id);
+            user = await storage.getUser(user.id);
           }
         }
       }
@@ -51,7 +76,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if user is a member of any ACTIVE organization (for invited users)
       let hasOrganizationMembership = false;
       if (user && user.role !== "super_admin") {
-        const memberships = await storage.getUserOrganizations(userId);
+        const memberships = await storage.getUserOrganizations(user.id);
         // Only count active memberships to prevent login loops for deactivated users
         hasOrganizationMembership = memberships.some(m => m.active);
       }
@@ -68,7 +93,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/auth/user", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const user = await getUserFromRequest(req);
       const { firstName, lastName } = req.body;
       
       const updateData: any = {};
@@ -76,7 +101,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (lastName !== undefined) updateData.lastName = lastName;
       
       const updatedUser = await storage.upsertUser({
-        id: userId,
+        id: user.id,
         ...updateData
       });
       
@@ -90,8 +115,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Organization onboarding endpoint
   app.post("/api/organizations", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       
       if (user?.organizationId) {
         return res.status(400).json({ error: "User already has an organization" });
@@ -99,11 +123,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const validated = insertOrganizationSchema.parse(req.body);
       const org = await storage.createOrganization(validated);
-      await storage.updateUserOrganization(userId, org.id);
+      await storage.updateUserOrganization(user.id, org.id);
       
       // Auto-assign 'admin' role to organization creator
       await storage.addUserToOrganization({
-        userId,
+        userId: user.id,
         organizationId: org.id,
         role: "admin",
         active: true,
@@ -119,8 +143,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get organization profile
   app.get("/api/organization/profile", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       const orgId = getEffectiveOrgId(user);
       if (!orgId) {
         return res.status(403).json({ error: "No organization" });
@@ -138,8 +161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update organization profile
   app.patch("/api/organization/profile", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       const orgId = getEffectiveOrgId(user);
       if (!orgId) {
         return res.status(403).json({ error: "No organization" });
@@ -175,8 +197,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Team Management Routes
   app.get("/api/team", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       const orgId = getEffectiveOrgId(user);
       if (!orgId) {
         return res.status(403).json({ error: "No organization" });
@@ -190,8 +211,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/team/invite", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       const isSuperAdmin = user?.role === "super_admin";
       
       // Validate request body with Zod
@@ -277,7 +297,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           email,
           organizationId: targetOrgId,
           role: role || "user",
-          invitedBy: userId,
+          invitedBy: user.id,
         });
         
         return res.json({ 
@@ -304,7 +324,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email,
         organizationId: targetOrgId,
         role: role || "user",
-        invitedBy: userId,
+        invitedBy: user.id,
       });
 
       console.log(`✅ Team invitation sent - From: ${fromAddress} | To: ${email} | Org: ${org.name} | Role: ${role || 'user'}`);
@@ -325,8 +345,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/team/:userId", isAuthenticated, async (req: any, res) => {
     try {
-      const currentUserId = req.user.claims.sub;
-      const user = await storage.getUser(currentUserId);
+      const user = await getUserFromRequest(req);
       const orgId = getEffectiveOrgId(user);
       if (!orgId) {
         return res.status(403).json({ error: "No organization" });
@@ -341,8 +360,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Super Admin Routes
   app.get("/api/admin/organizations", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       if (user?.role !== "super_admin") {
         return res.status(403).json({ error: "Forbidden" });
       }
@@ -355,8 +373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/admin/switch-org", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       if (user?.role !== "super_admin") {
         return res.status(403).json({ error: "Forbidden" });
       }
@@ -366,7 +383,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Organization ID required" });
       }
 
-      await storage.updateUserCurrentOrg(userId, organizationId);
+      await storage.updateUserCurrentOrg(user.id, organizationId);
       res.json({ message: "Organization context switched", organizationId });
     } catch (error) {
       res.status(500).json({ error: "Failed to switch organization" });
@@ -375,8 +392,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/admin/organizations/:id/archive", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       if (user?.role !== "super_admin") {
         return res.status(403).json({ error: "Forbidden" });
       }
@@ -400,8 +416,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // NUCLEAR CLEANUP - Super Admin Only - Deletes ALL data except Josh's super admin account
   app.post("/api/admin/nuclear-cleanup", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       if (user?.role !== "super_admin") {
         return res.status(403).json({ error: "Forbidden - Super admin only" });
       }
@@ -431,8 +446,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Super Admin Roll-Up Stats
   app.get("/api/admin/rollup-stats", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       if (user?.role !== "super_admin") {
         return res.status(403).json({ error: "Forbidden" });
       }
@@ -493,8 +507,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Contact routes
   app.get("/api/contacts", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       const orgId = getEffectiveOrgId(user);
       if (!orgId) {
         return res.status(403).json({ error: "No organization" });
@@ -508,8 +521,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/contacts/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       const orgId = getEffectiveOrgId(user);
       if (!orgId) {
         return res.status(403).json({ error: "No organization" });
@@ -526,8 +538,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/contacts", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       const orgId = getEffectiveOrgId(user);
       if (!orgId) {
         return res.status(403).json({ error: "No organization" });
@@ -549,8 +560,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/contacts/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       const orgId = getEffectiveOrgId(user);
       if (!orgId) {
         return res.status(403).json({ error: "No organization" });
@@ -569,8 +579,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/contacts/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       const orgId = getEffectiveOrgId(user);
       if (!orgId) {
         return res.status(403).json({ error: "No organization" });
@@ -584,8 +593,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/contacts/import", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       const orgId = getEffectiveOrgId(user);
       if (!orgId) {
         return res.status(403).json({ error: "No organization" });
@@ -629,8 +637,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Deal routes
   app.get("/api/deals", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       const orgId = getEffectiveOrgId(user);
       if (!orgId) {
         return res.status(403).json({ error: "No organization" });
@@ -644,8 +651,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/deals/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       const orgId = getEffectiveOrgId(user);
       if (!orgId) {
         return res.status(403).json({ error: "No organization" });
@@ -662,8 +668,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/contacts/:contactId/deals", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       const orgId = getEffectiveOrgId(user);
       if (!orgId) {
         return res.status(403).json({ error: "No organization" });
@@ -677,8 +682,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/deals", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       const orgId = getEffectiveOrgId(user);
       if (!orgId) {
         return res.status(403).json({ error: "No organization" });
@@ -710,8 +714,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/deals/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       const orgId = getEffectiveOrgId(user);
       if (!orgId) {
         return res.status(403).json({ error: "No organization" });
@@ -748,8 +751,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/deals/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       const orgId = getEffectiveOrgId(user);
       if (!orgId) {
         return res.status(403).json({ error: "No organization" });
@@ -764,8 +766,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Activity routes
   app.get("/api/activities", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       const orgId = getEffectiveOrgId(user);
       if (!orgId) {
         return res.status(403).json({ error: "No organization" });
@@ -779,8 +780,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/contacts/:contactId/activities", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       const orgId = getEffectiveOrgId(user);
       if (!orgId) {
         return res.status(403).json({ error: "No organization" });
@@ -794,8 +794,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/deals/:dealId/activities", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       const orgId = getEffectiveOrgId(user);
       if (!orgId) {
         return res.status(403).json({ error: "No organization" });
@@ -809,8 +808,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/activities", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       const orgId = getEffectiveOrgId(user);
       if (!orgId) {
         return res.status(403).json({ error: "No organization" });
@@ -829,8 +827,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Contract template routes
   app.get("/api/contract-templates", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       const orgId = getEffectiveOrgId(user);
       if (!orgId) {
         return res.status(403).json({ error: "No organization" });
@@ -844,8 +841,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/contract-templates/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       const orgId = getEffectiveOrgId(user);
       if (!orgId) {
         return res.status(403).json({ error: "No organization" });
@@ -862,8 +858,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/contract-templates/type/:type", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       const orgId = getEffectiveOrgId(user);
       if (!orgId) {
         return res.status(403).json({ error: "No organization" });
@@ -877,8 +872,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/contract-templates", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       const orgId = getEffectiveOrgId(user);
       if (!orgId) {
         return res.status(403).json({ error: "No organization" });
@@ -896,8 +890,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/contract-templates/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       const orgId = getEffectiveOrgId(user);
       if (!orgId) {
         return res.status(403).json({ error: "No organization" });
@@ -914,8 +907,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/contract-templates/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       const orgId = getEffectiveOrgId(user);
       if (!orgId) {
         return res.status(403).json({ error: "No organization" });
@@ -930,8 +922,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Email template routes
   app.get("/api/email-templates", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       const orgId = getEffectiveOrgId(user);
       if (!orgId) {
         return res.status(403).json({ error: "No organization" });
@@ -945,8 +936,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/email-templates/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       const orgId = getEffectiveOrgId(user);
       if (!orgId) {
         return res.status(403).json({ error: "No organization" });
@@ -963,8 +953,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/email-templates", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       const orgId = getEffectiveOrgId(user);
       if (!orgId) {
         return res.status(403).json({ error: "No organization" });
@@ -982,8 +971,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/email-templates/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       const orgId = getEffectiveOrgId(user);
       if (!orgId) {
         return res.status(403).json({ error: "No organization" });
@@ -1000,8 +988,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/email-templates/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       const orgId = getEffectiveOrgId(user);
       if (!orgId) {
         return res.status(403).json({ error: "No organization" });
@@ -1022,8 +1009,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Get authenticated user for personalized From name and Reply-To
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       if (!user || !user.email) {
         return res.status(403).json({ error: "User not found or email not set" });
       }
@@ -1071,8 +1057,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin Management Routes (Super Admin Only)
   app.get("/api/admin/all-users", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       
       // Only super admins can access this
       if (user?.role !== "super_admin") {
@@ -1088,8 +1073,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/admin/all-organizations", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       
       // Only super admins can access this
       if (user?.role !== "super_admin") {
@@ -1105,8 +1089,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/admin/deactivated-users", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       
       // Only super admins can access this
       if (user?.role !== "super_admin") {
@@ -1122,8 +1105,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/admin/organizations/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       
       // Only super admins can access this
       if (user?.role !== "super_admin") {
@@ -1142,8 +1124,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/admin/users/:userId/organizations/:orgId", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const user = await getUserFromRequest(req);
       
       // Only super admins can access this
       if (user?.role !== "super_admin") {

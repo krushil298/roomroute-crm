@@ -53,11 +53,12 @@ async function upsertUser(
   claims: any,
 ) {
   const email = claims["email"];
-  const userId = claims["sub"];
+  const oidcSub = claims["sub"];
   const isSuperAdmin = email === "josh.gaddis@roomroute.org";
   
-  await storage.upsertUser({
-    id: userId,
+  // Upsert the user and get the actual database user object
+  const dbUser = await storage.upsertUser({
+    id: oidcSub,
     email,
     firstName: claims["first_name"],
     lastName: claims["last_name"],
@@ -65,6 +66,9 @@ async function upsertUser(
     role: isSuperAdmin ? "super_admin" : "user",
     organizationId: isSuperAdmin ? null : undefined,
   });
+
+  // Use the actual database user ID for all subsequent operations
+  const userId = dbUser.id;
 
   // Process any pending invitations for this email
   if (email && !isSuperAdmin) {

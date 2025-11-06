@@ -6,14 +6,17 @@ RoomRoute is a comprehensive multi-tenant CRM designed for hotels and hospitalit
 ## Recent Updates (November 2025) - Ready for Production
 
 ### Latest Features (November 6, 2025)
-**Clean Sign In/Sign Out and Invitation Flow**:
+**Clean Sign In/Sign Out and Invitation Flow** (COMPLETED & TESTED):
 1. **User Invitations Table**: Created `user_invitations` table to track pending invites before users first log in
 2. **Auto-Assignment on Login**: When invited users log in for the first time, they're automatically added to their invited organization(s) without going through onboarding
 3. **Smart Onboarding Skip**: Users who have been invited to an organization skip the organization creation page and go directly to their organization
 4. **Invitation Processing**: On login, system checks for pending invitations by email, auto-assigns users to organizations with the specified role (user/admin), and sets primary organization
 5. **Multi-User Support**: Different users can sign in/out on the same computer cleanly without conflicts. Invited users are seamlessly integrated into existing organizations
-6. **Super Admin Invite Workflow**: Super admin can now select which organization to invite users to via dropdown (previously redesigned in earlier update)
-7. **Enhanced User Endpoint**: `/api/auth/user` now includes `hasOrganizationMembership` flag to determine if user should see onboarding
+6. **Super Admin Invite Workflow**: Super admin can now select which organization to invite users to via dropdown
+7. **Enhanced User Endpoint**: `/api/auth/user` includes `hasOrganizationMembership` flag (only counts ACTIVE memberships) to determine if user should see onboarding
+8. **getUserFromRequest Helper**: All API endpoints use helper function with email fallback to handle OIDC sub/database ID mismatches
+9. **Database ID Consistency**: Fixed upsertUser to use actual database user ID (not OIDC sub) for all invitation processing operations
+10. **End-to-End Testing**: Complete invitation lifecycle tested including super admin access, invitation creation, auto-assignment, deactivation, re-invitation with role changes, and reactivation
 
 ### Previous Features (November 5, 2025)
 **Email Invitations for Team Members**:
