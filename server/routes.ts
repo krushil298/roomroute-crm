@@ -181,22 +181,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      const orgId = getEffectiveOrgId(user);
-      if (!orgId) {
-        return res.status(403).json({ error: "No organization" });
-      }
+      const isSuperAdmin = user?.role === "super_admin";
       
       // Validate request body with Zod
       const inviteSchema = z.object({
         email: z.string().email("Valid email address is required"),
         role: z.enum(["user", "admin"]).optional().default("user"),
+        organizationId: z.string().optional(),
       });
       
       const validated = inviteSchema.parse(req.body);
-      const { email, role } = validated;
+      const { email, role, organizationId } = validated;
+
+      // Determine target organization
+      let targetOrgId: string | undefined;
+      
+      if (isSuperAdmin) {
+        // Super admin MUST provide organizationId
+        if (!organizationId) {
+          return res.status(400).json({ error: "Super admin must specify organizationId" });
+        }
+        targetOrgId = organizationId;
+      } else {
+        // Regular users: use their effective org (ignore organizationId from request for security)
+        targetOrgId = getEffectiveOrgId(user);
+        if (!targetOrgId) {
+          return res.status(403).json({ error: "No organization" });
+        }
+      }
 
       // Get organization details for the invitation email
-      const org = await storage.getOrganization(orgId);
+      const org = await storage.getOrganization(targetOrgId);
       if (!org || !user) {
         return res.status(404).json({ error: "Organization or user not found" });
       }
