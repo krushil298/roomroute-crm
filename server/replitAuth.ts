@@ -53,10 +53,11 @@ async function upsertUser(
   claims: any,
 ) {
   const email = claims["email"];
+  const userId = claims["sub"];
   const isSuperAdmin = email === "josh.gaddis@roomroute.org";
   
   await storage.upsertUser({
-    id: claims["sub"],
+    id: userId,
     email,
     firstName: claims["first_name"],
     lastName: claims["last_name"],
@@ -64,6 +65,48 @@ async function upsertUser(
     role: isSuperAdmin ? "super_admin" : "user",
     organizationId: isSuperAdmin ? null : undefined,
   });
+
+  // Process any pending invitations for this email
+  if (email && !isSuperAdmin) {
+    const invitations = await storage.getInvitationsByEmail(email);
+    
+    for (const invitation of invitations) {
+      // Check if user already has a membership (active or inactive) for this organization
+      const existingMemberships = await storage.getUserOrganizations(userId);
+      const existingMembership = existingMemberships.find(
+        m => m.organizationId === invitation.organizationId
+      );
+      
+      if (existingMembership) {
+        // User was previously a member - reactivate them if needed
+        if (!existingMembership.active) {
+          await storage.updateUserOrganizationStatus(userId, invitation.organizationId, true);
+        }
+        // Update role to match the new invitation if it changed
+        // (In case they were previously a user but now invited as admin, or vice versa)
+        if (existingMembership.role !== invitation.role) {
+          await storage.updateUserOrganizationRole(userId, invitation.organizationId, invitation.role);
+        }
+      } else {
+        // Add user to the organization with the invited role
+        await storage.addUserToOrganization({
+          userId,
+          organizationId: invitation.organizationId,
+          role: invitation.role,
+          active: true,
+        });
+      }
+      
+      // Set this as their primary organization if they don't have one
+      const user = await storage.getUser(userId);
+      if (!user?.organizationId) {
+        await storage.updateUserOrganization(userId, invitation.organizationId);
+      }
+      
+      // Delete the invitation record (it's been processed)
+      await storage.deleteInvitation(invitation.id);
+    }
+  }
 }
 
 export async function setupAuth(app: Express) {

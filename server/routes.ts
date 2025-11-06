@@ -48,7 +48,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      res.json(user);
+      // Check if user is a member of any ACTIVE organization (for invited users)
+      let hasOrganizationMembership = false;
+      if (user && user.role !== "super_admin") {
+        const memberships = await storage.getUserOrganizations(userId);
+        // Only count active memberships to prevent login loops for deactivated users
+        hasOrganizationMembership = memberships.some(m => m.active);
+      }
+      
+      res.json({ 
+        ...user, 
+        hasOrganizationMembership 
+      });
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
@@ -260,6 +271,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           role: role || 'user',
           organization: org.name
         });
+        
+        // Create invitation record even in development mode
+        await storage.createInvitation({
+          email,
+          organizationId: targetOrgId,
+          role: role || "user",
+          invitedBy: userId,
+        });
+        
         return res.json({ 
           success: true, 
           message: `Invitation logged for ${email} (Resend not configured)`,
@@ -277,6 +297,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         to: [email],
         subject: subject,
         html: htmlBody,
+      });
+
+      // Create invitation record for auto-assignment on first login
+      await storage.createInvitation({
+        email,
+        organizationId: targetOrgId,
+        role: role || "user",
+        invitedBy: userId,
       });
 
       console.log(`✅ Team invitation sent - From: ${fromAddress} | To: ${email} | Org: ${org.name} | Role: ${role || 'user'}`);

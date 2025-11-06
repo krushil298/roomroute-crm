@@ -53,6 +53,7 @@ export interface IStorage {
   addUserToOrganization(data: InsertUserOrganization): Promise<UserOrganization>;
   removeUserFromOrganization(userId: string, organizationId: string): Promise<void>;
   updateUserOrganizationStatus(userId: string, organizationId: string, active: boolean): Promise<any>;
+  updateUserOrganizationRole(userId: string, organizationId: string, role: string): Promise<any>;
   
   // User Invitation operations
   createInvitation(invitation: InsertUserInvitation): Promise<UserInvitation>;
@@ -270,6 +271,15 @@ export class DbStorage implements IStorage {
   async updateUserOrganizationStatus(userId: string, organizationId: string, active: boolean): Promise<any> {
     await db.update(userOrganizations)
       .set({ active })
+      .where(
+        and(eq(userOrganizations.userId, userId), eq(userOrganizations.organizationId, organizationId))
+      );
+    return { success: true };
+  }
+
+  async updateUserOrganizationRole(userId: string, organizationId: string, role: string): Promise<any> {
+    await db.update(userOrganizations)
+      .set({ role })
       .where(
         and(eq(userOrganizations.userId, userId), eq(userOrganizations.organizationId, organizationId))
       );

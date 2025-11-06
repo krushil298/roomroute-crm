@@ -63,8 +63,13 @@ function Router() {
   }
 
   // Super admins don't need an organization - skip onboarding
-  // Regular users need an organization
-  if (!user?.organizationId && user?.role !== "super_admin") {
+  // Regular users: Only show onboarding if they have NO organization membership
+  // This allows invited users to skip onboarding and go straight to their organization
+  const needsOnboarding = user?.role !== "super_admin" && 
+                          !user?.organizationId && 
+                          !(user as any)?.hasOrganizationMembership;
+  
+  if (needsOnboarding) {
     return <Onboarding />;
   }
 
@@ -97,7 +102,7 @@ function Router() {
               />
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground" data-testid="text-user-name">
-                  {user.firstName || user.email}
+                  {user?.firstName || user?.email || "User"}
                 </span>
                 <Button
                   variant="ghost"
