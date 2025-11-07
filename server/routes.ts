@@ -1405,12 +1405,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Access denied" });
       }
       
+      // If archiving the organization (setting active=false), deactivate all users first
+      if (req.body.active === false) {
+        const deactivateResult = await storage.deactivateAllOrganizationUsers(req.params.id);
+        console.log(`Deactivated ${deactivateResult.count} users in organization ${req.params.id}`);
+      }
+      
       const org = await storage.updateOrganization(req.params.id, req.body);
       if (!org) {
         return res.status(404).json({ error: "Organization not found" });
       }
       res.json(org);
     } catch (error) {
+      console.error("Error updating organization:", error);
       res.status(500).json({ error: "Failed to update organization" });
     }
   });
