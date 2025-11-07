@@ -55,6 +55,7 @@ export interface IStorage {
   removeUserFromOrganization(userId: string, organizationId: string): Promise<void>;
   updateUserOrganizationStatus(userId: string, organizationId: string, active: boolean): Promise<any>;
   updateUserOrganizationRole(userId: string, organizationId: string, role: string): Promise<any>;
+  deactivateAllOrganizationUsers(organizationId: string): Promise<{ count: number }>;
   
   // User Invitation operations
   createInvitation(invitation: InsertUserInvitation): Promise<UserInvitation>;
@@ -294,6 +295,15 @@ export class DbStorage implements IStorage {
         and(eq(userOrganizations.userId, userId), eq(userOrganizations.organizationId, organizationId))
       );
     return { success: true };
+  }
+
+  async deactivateAllOrganizationUsers(organizationId: string): Promise<{ count: number }> {
+    const result = await db.update(userOrganizations)
+      .set({ active: false })
+      .where(eq(userOrganizations.organizationId, organizationId))
+      .returning();
+    
+    return { count: result.length };
   }
 
   // User Invitation operations
