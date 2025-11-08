@@ -201,6 +201,7 @@ export default function Dashboard() {
         isPositive: currentMonthContacts.length >= previousMonthContacts.length 
       },
       onClick: () => setLocation("/contacts"),
+      accentColor: "primary" as const,
     },
     {
       title: "Lead Pipeline",
@@ -211,6 +212,7 @@ export default function Dashboard() {
         isPositive: currentMonthLeadPipeline >= previousMonthLeadPipeline 
       },
       onClick: () => setLocation("/contacts"),
+      accentColor: "gold" as const,
     },
     {
       title: "Deal Pipeline",
@@ -221,6 +223,7 @@ export default function Dashboard() {
         isPositive: currentMonthDealPipeline >= previousMonthDealPipeline 
       },
       onClick: () => setLocation("/deals"),
+      accentColor: "gold" as const,
     },
     {
       title: "This Month",
@@ -231,6 +234,7 @@ export default function Dashboard() {
         isPositive: currentMonthActivities.length >= previousMonthActivities.length 
       },
       onClick: () => setLocation("/reports"),
+      accentColor: "primary" as const,
     },
   ];
 
