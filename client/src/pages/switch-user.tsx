@@ -4,10 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { AlertCircle, LogIn, Users } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useToast } from "@/hooks/use-toast";
 
 export default function SwitchUser() {
   const [, setLocation] = useLocation();
   const [lastUser, setLastUser] = useState<{ email: string; name: string } | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     const stored = localStorage.getItem("lastLoggedInUser");
@@ -28,6 +30,16 @@ export default function SwitchUser() {
     // Clear last user info
     localStorage.removeItem("lastLoggedInUser");
     setLastUser(null);
+    
+    toast({
+      title: "User info cleared",
+      description: "You can now log in as a different user.",
+    });
+    
+    // Redirect to login after brief delay for toast visibility
+    setTimeout(() => {
+      window.location.href = "/api/login";
+    }, 1000);
   };
 
   return (
