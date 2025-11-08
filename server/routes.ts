@@ -1431,6 +1431,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Access denied" });
       }
       
+      // If reactivating (active=true), check if the organization is active
+      if (req.body.active === true) {
+        const org = await storage.getOrganization(req.params.orgId);
+        if (!org || !org.active) {
+          return res.status(400).json({ 
+            error: "Cannot reactivate user in an archived organization. Please restore the organization first." 
+          });
+        }
+      }
+      
       const result = await storage.updateUserOrganizationStatus(
         req.params.userId,
         req.params.orgId,

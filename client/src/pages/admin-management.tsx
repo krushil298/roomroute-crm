@@ -262,34 +262,49 @@ export default function AdminManagement() {
             </p>
           ) : (
             <div className="space-y-2">
-              {deactivatedUsers.map((userOrg: any) => (
-                <div
-                  key={`${userOrg.userId}-${userOrg.organizationId}`}
-                  className="flex items-center justify-between p-3 border rounded-md"
-                  data-testid={`row-deactivated-user-${userOrg.userId}`}
-                >
-                  <div className="flex-1">
-                    <p className="font-medium" data-testid={`text-user-email-${userOrg.userId}`}>
-                      {userOrg.email}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {userOrg.firstName} {userOrg.lastName} • {userOrg.orgName}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Role: {userOrg.role}
-                    </p>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleActivateUser(userOrg.userId, userOrg.organizationId, userOrg.email)}
-                    data-testid={`button-activate-user-${userOrg.userId}`}
+              {deactivatedUsers.map((userOrg: any) => {
+                // Check if the organization is archived
+                const org = allOrganizations.find(o => o.id === userOrg.organizationId);
+                const isOrgArchived = org && !org.active;
+                
+                return (
+                  <div
+                    key={`${userOrg.userId}-${userOrg.organizationId}`}
+                    className="flex items-center justify-between p-3 border rounded-md"
+                    data-testid={`row-deactivated-user-${userOrg.userId}`}
                   >
-                    <UserCheck className="h-4 w-4 mr-1" />
-                    Reactivate
-                  </Button>
-                </div>
-              ))}
+                    <div className="flex-1">
+                      <p className="font-medium" data-testid={`text-user-email-${userOrg.userId}`}>
+                        {userOrg.email}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {userOrg.firstName} {userOrg.lastName} • {userOrg.orgName}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Role: {userOrg.role}
+                      </p>
+                      {isOrgArchived && (
+                        <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                          Organization is archived - restore org first
+                        </p>
+                      )}
+                    </div>
+                    {!isOrgArchived ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleActivateUser(userOrg.userId, userOrg.organizationId, userOrg.email)}
+                        data-testid={`button-activate-user-${userOrg.userId}`}
+                      >
+                        <UserCheck className="h-4 w-4 mr-1" />
+                        Reactivate
+                      </Button>
+                    ) : (
+                      <Badge variant="secondary">Org Archived</Badge>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </CardContent>
