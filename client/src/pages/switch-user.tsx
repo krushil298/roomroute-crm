@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 export default function SwitchUser() {
   const [, setLocation] = useLocation();
   const [lastUser, setLastUser] = useState<{ email: string; name: string } | null>(null);
+  const [cleared, setCleared] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -30,16 +31,12 @@ export default function SwitchUser() {
     // Clear last user info
     localStorage.removeItem("lastLoggedInUser");
     setLastUser(null);
+    setCleared(true);
     
     toast({
       title: "User info cleared",
-      description: "You can now log in as a different user.",
+      description: "You can now close this tab or use incognito mode to log in as a different user.",
     });
-    
-    // Redirect to login after brief delay for toast visibility
-    setTimeout(() => {
-      window.location.href = "/api/login";
-    }, 1000);
   };
 
   return (
@@ -51,7 +48,9 @@ export default function SwitchUser() {
           </div>
           <CardTitle className="text-2xl">Who's Logging In?</CardTitle>
           <CardDescription>
-            {lastUser ? (
+            {cleared ? (
+              "User info has been cleared. Open a private/incognito window to log in as a different user."
+            ) : lastUser ? (
               <>Last user: {lastUser.name} ({lastUser.email})</>
             ) : (
               "Confirm your identity to continue"
@@ -59,7 +58,7 @@ export default function SwitchUser() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {lastUser && (
+          {!cleared && lastUser && (
             <Button
               className="w-full"
               size="lg"
@@ -71,38 +70,40 @@ export default function SwitchUser() {
             </Button>
           )}
 
-          <div className="space-y-3">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
+          {!cleared && (
+            <div className="space-y-3">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">
+                    Different user?
+                  </span>
+                </div>
               </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                  Different user?
-                </span>
-              </div>
+
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="text-sm">
+                  To log in as a different user on this computer, please:
+                  <ul className="list-disc ml-5 mt-2 space-y-1">
+                    <li>Use Private/Incognito browsing mode, or</li>
+                    <li>Clear your browser's cookies and history</li>
+                  </ul>
+                </AlertDescription>
+              </Alert>
+
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handleDifferentUser}
+                data-testid="button-different-user"
+              >
+                I understand - Clear last user info
+              </Button>
             </div>
-
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription className="text-sm">
-                To log in as a different user on this computer, please:
-                <ul className="list-disc ml-5 mt-2 space-y-1">
-                  <li>Use Private/Incognito browsing mode, or</li>
-                  <li>Clear your browser's cookies and history</li>
-                </ul>
-              </AlertDescription>
-            </Alert>
-
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={handleDifferentUser}
-              data-testid="button-different-user"
-            >
-              I understand - Clear last user info
-            </Button>
-          </div>
+          )}
 
           <div className="text-center">
             <Button
