@@ -1442,6 +1442,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/admin/cleanup-archived-org-users", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getUserFromRequest(req);
+      
+      // Only super admins can access this
+      if (user?.role !== "super_admin") {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      const result = await storage.cleanupArchivedOrgUsers();
+      console.log(`Cleanup completed: deactivated ${result.count} users from archived organizations`);
+      res.json(result);
+    } catch (error) {
+      console.error("Error during cleanup:", error);
+      res.status(500).json({ error: "Failed to cleanup users" });
+    }
+  });
+
   // Object Storage Routes (for contract uploads) - Referenced from blueprint:javascript_object_storage
   const { ObjectStorageService, ObjectNotFoundError } = await import("./objectStorage");
   const { ObjectPermission } = await import("./objectAcl");

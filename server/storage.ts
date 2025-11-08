@@ -56,6 +56,7 @@ export interface IStorage {
   updateUserOrganizationStatus(userId: string, organizationId: string, active: boolean): Promise<any>;
   updateUserOrganizationRole(userId: string, organizationId: string, role: string): Promise<any>;
   deactivateAllOrganizationUsers(organizationId: string): Promise<{ count: number }>;
+  cleanupArchivedOrgUsers(): Promise<{ count: number }>;
   
   // User Invitation operations
   createInvitation(invitation: InsertUserInvitation): Promise<UserInvitation>;
@@ -254,7 +255,12 @@ export class DbStorage implements IStorage {
       .from(userOrganizations)
       .leftJoin(users, eq(userOrganizations.userId, users.id))
       .leftJoin(organizations, eq(userOrganizations.organizationId, organizations.id))
-      .where(eq(userOrganizations.active, true));
+      .where(
+        and(
+          eq(userOrganizations.active, true),
+          eq(organizations.active, true)
+        )
+      );
     
     return results;
   }
@@ -301,6 +307,29 @@ export class DbStorage implements IStorage {
     const result = await db.update(userOrganizations)
       .set({ active: false })
       .where(eq(userOrganizations.organizationId, organizationId))
+      .returning();
+    
+    return { count: result.length };
+  }
+
+  async cleanupArchivedOrgUsers(): Promise<{ count: number }> {
+    // Find all archived organizations
+    const archivedOrgs = await db
+      .select({ id: organizations.id })
+      .from(organizations)
+      .where(eq(organizations.active, false));
+    
+    const archivedOrgIds = archivedOrgs.map(org => org.id);
+    
+    if (archivedOrgIds.length === 0) {
+      return { count: 0 };
+    }
+    
+    // Deactivate all users in archived organizations
+    const result = await db
+      .update(userOrganizations)
+      .set({ active: false })
+      .where(sql`${userOrganizations.organizationId} IN ${sql.raw(`(${archivedOrgIds.map(id => `'${id}'`).join(',')})`)}`)
       .returning();
     
     return { count: result.length };

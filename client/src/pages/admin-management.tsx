@@ -59,6 +59,7 @@ export default function AdminManagement() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/deactivated-users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/all-users"] });
       toast({
         title: "Success",
         description: variables.active ? "User reactivated successfully" : "User deactivated successfully",
@@ -74,6 +75,28 @@ export default function AdminManagement() {
     },
   });
 
+  const cleanupMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/admin/cleanup-archived-org-users", {});
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/deactivated-users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/all-users"] });
+      toast({
+        title: "Cleanup Complete",
+        description: `Deactivated ${data.count} user(s) from archived organizations`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to cleanup users",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleArchiveOrg = (id: string, name: string) => {
     setConfirmArchiveRestore({ id, name, action: 'archive' });
   };
@@ -84,6 +107,10 @@ export default function AdminManagement() {
 
   const handleActivateUser = (userId: string, orgId: string, email: string) => {
     setConfirmUserAction({ userId, orgId, email, action: 'activate' });
+  };
+
+  const handleDeactivateUser = (userId: string, orgId: string, email: string) => {
+    setConfirmUserAction({ userId, orgId, email, action: 'deactivate' });
   };
 
   const confirmOrgAction = () => {
@@ -163,10 +190,21 @@ export default function AdminManagement() {
       {/* All Active Users Section */}
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-2">
-            <UserCheck className="h-5 w-5" />
-            <CardTitle>All Active Users</CardTitle>
-            <Badge variant="default">{allActiveUsers.length}</Badge>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <UserCheck className="h-5 w-5" />
+              <CardTitle>All Active Users</CardTitle>
+              <Badge variant="default">{allActiveUsers.length}</Badge>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => cleanupMutation.mutate()}
+              disabled={cleanupMutation.isPending}
+              data-testid="button-cleanup-archived-users"
+            >
+              {cleanupMutation.isPending ? "Cleaning up..." : "Cleanup Archived Org Users"}
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
@@ -193,6 +231,14 @@ export default function AdminManagement() {
                       Role: <Badge variant="secondary" className="text-xs">{userOrg.role}</Badge>
                     </p>
                   </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleDeactivateUser(userOrg.userId, userOrg.organizationId, userOrg.email)}
+                    data-testid={`button-deactivate-user-${userOrg.userId}`}
+                  >
+                    Deactivate
+                  </Button>
                 </div>
               ))}
             </div>
