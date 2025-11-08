@@ -208,7 +208,7 @@ export async function setupAuth(app: Express) {
 
   app.get("/api/logout", (req, res) => {
     const user = req.user as any;
-    const idToken = user?.access_token; // Use access token as hint
+    const idToken = user?.id_token;
     
     // Construct base URL properly for both dev and production
     const baseUrl = process.env.REPLIT_DOMAINS 
