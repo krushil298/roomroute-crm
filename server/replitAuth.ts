@@ -46,6 +46,7 @@ function updateUserSession(
   user.claims = tokens.claims();
   user.access_token = tokens.access_token;
   user.refresh_token = tokens.refresh_token;
+  user.id_token = tokens.id_token;
   user.expires_at = user.claims?.exp;
 }
 
