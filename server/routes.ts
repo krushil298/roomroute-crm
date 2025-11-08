@@ -1431,10 +1431,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Access denied" });
       }
       
+      console.log(`[User Update] userId: ${req.params.userId}, orgId: ${req.params.orgId}, active: ${req.body.active}`);
+      
       // If reactivating (active=true), check if the organization is active
       if (req.body.active === true) {
         const org = await storage.getOrganization(req.params.orgId);
+        console.log(`[User Update] Organization check: org exists=${!!org}, org.active=${org?.active}`);
         if (!org || !org.active) {
+          console.log(`[User Update] Blocked: Cannot reactivate user in archived organization`);
           return res.status(400).json({ 
             error: "Cannot reactivate user in an archived organization. Please restore the organization first." 
           });
@@ -1446,8 +1450,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         req.params.orgId,
         req.body.active
       );
+      console.log(`[User Update] Success: updated user status, result:`, result);
       res.json(result);
     } catch (error) {
+      console.error(`[User Update] Error:`, error);
       res.status(500).json({ error: "Failed to update user status" });
     }
   });
