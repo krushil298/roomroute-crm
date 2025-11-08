@@ -80,21 +80,21 @@ export function OrganizationSwitcher() {
       onValueChange={(value) => switchOrgMutation.mutate(value)}
       disabled={switchOrgMutation.isPending}
     >
-      <SelectTrigger className="w-[280px]" data-testid="select-organization">
+      <SelectTrigger className="w-[280px] font-semibold" data-testid="select-organization">
         <div className="flex items-center gap-2">
           <Building2 className="h-4 w-4" />
           <SelectValue placeholder="Select organization">
-            {displayValue}
+            <span className="font-semibold">{displayValue}</span>
           </SelectValue>
         </div>
       </SelectTrigger>
       <SelectContent>
         {activeOrganizations.map((org) => (
-          <SelectItem key={org.id} value={org.id} data-testid={`option-org-${org.id}`}>
-            <div className="flex flex-col">
-              <span className="font-medium">{org.name || org.hotelName}</span>
+          <SelectItem key={org.id} value={org.id} data-testid={`option-org-${org.id}`} className="py-3">
+            <div className="flex flex-col gap-0.5">
+              <span className="font-semibold text-sm">{org.name || org.hotelName}</span>
               {org.city && org.state && (
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-muted-foreground font-normal">
                   {org.city}, {org.state}
                 </span>
               )}
