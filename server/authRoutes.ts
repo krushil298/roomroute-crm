@@ -46,14 +46,22 @@ router.post("/signup", async (req, res) => {
 
     // Set session
     setUserSession(req, user);
+    console.log('[SIGNUP] Session before save:', { sessionID: req.sessionID, userId: req.session.userId });
 
     // Explicitly save session and handle errors
     await new Promise<void>((resolve, reject) => {
       req.session.save((err) => {
-        if (err) reject(err);
-        else resolve();
+        if (err) {
+          console.error('[SIGNUP] Session save error:', err);
+          reject(err);
+        } else {
+          console.log('[SIGNUP] Session saved successfully, ID:', req.sessionID);
+          resolve();
+        }
       });
     });
+
+    console.log('[SIGNUP] Session after save:', { sessionID: req.sessionID, userId: req.session.userId });
 
     // Return user (without password)
     const { password: _, ...userWithoutPassword } = user;
