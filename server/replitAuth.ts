@@ -9,9 +9,11 @@ import { storage } from "./storage";
 
 const getOidcConfig = memoize(
   async () => {
+    // Temporary: make REPL_ID optional to allow deployment without it
+    const replId = process.env.REPL_ID || "temporary-repl-id";
     return await client.discovery(
       new URL(process.env.ISSUER_URL ?? "https://replit.com/oidc"),
-      process.env.REPL_ID!
+      replId
     );
   },
   { maxAge: 3600 * 1000 }
@@ -216,7 +218,7 @@ export async function setupAuth(app: Express) {
       : `${req.protocol}://${req.hostname}`;
     
     const logoutParams: any = {
-      client_id: process.env.REPL_ID!,
+      client_id: process.env.REPL_ID || "temporary-repl-id",
       post_logout_redirect_uri: `${baseUrl}/switch-user`,
     };
     
