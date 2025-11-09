@@ -121,13 +121,15 @@ export class DbStorage implements IStorage {
 
   async upsertUser(userData: UpsertUser): Promise<User> {
     // First try to find existing user by ID or email
-    const existingById = await db.select().from(users).where(eq(users.id, userData.id!)).limit(1);
-    const existingByEmail = userData.email 
+    const existingById = userData.id
+      ? await db.select().from(users).where(eq(users.id, userData.id)).limit(1)
+      : [];
+    const existingByEmail = userData.email
       ? await db.select().from(users).where(eq(users.email, userData.email)).limit(1)
       : [];
-    
+
     const existing = existingById[0] || existingByEmail[0];
-    
+
     if (existing) {
       // Update existing user - exclude ID to avoid FK constraint violations
       const { id, ...updateData } = userData;
