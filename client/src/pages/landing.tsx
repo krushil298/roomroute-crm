@@ -4,8 +4,12 @@ import { Users, TrendingUp, Calendar, Mail } from "lucide-react";
 import logoUrl from "@assets/image_1762307821152.png";
 
 export default function Landing() {
+  const handleSignup = () => {
+    window.location.href = "/signup";
+  };
+
   const handleLogin = () => {
-    window.location.href = "/api/login";
+    window.location.href = "/login";
   };
 
   return (
@@ -15,9 +19,9 @@ export default function Landing() {
           {/* Hero Section */}
           <div className="text-center mb-16">
             <div className="flex justify-center mb-6">
-              <img 
-                src={logoUrl} 
-                alt="RoomRoute Logo" 
+              <img
+                src={logoUrl}
+                alt="RoomRoute Logo"
                 className="h-32 w-auto"
                 data-testid="img-logo"
               />
@@ -31,13 +35,23 @@ export default function Landing() {
             <p className="text-xl text-muted-foreground mb-8" data-testid="text-subtitle">
               Hotel CRM built for the hospitality industry
             </p>
-            <Button 
-              size="lg" 
-              onClick={handleLogin}
-              data-testid="button-login"
-            >
-              Log In to Get Started
-            </Button>
+            <div className="flex gap-4 justify-center">
+              <Button
+                size="lg"
+                onClick={handleSignup}
+                data-testid="button-signup"
+              >
+                Get Started
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                onClick={handleLogin}
+                data-testid="button-login"
+              >
+                Log In
+              </Button>
+            </div>
           </div>
 
           {/* Features Grid */}

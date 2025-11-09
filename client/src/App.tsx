@@ -23,6 +23,8 @@ import Team from "@/pages/team";
 import AdminManagement from "@/pages/admin-management";
 import AdminOverview from "@/pages/admin-overview";
 import Landing from "@/pages/landing";
+import Login from "@/pages/login";
+import Signup from "@/pages/signup";
 import Onboarding from "@/pages/onboarding";
 import SwitchUser from "@/pages/switch-user";
 import NotFound from "@/pages/not-found";
@@ -58,9 +60,14 @@ function AuthenticatedRouter() {
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
 
-  // Check if we're on the switch-user page (accessible without auth)
-  if (window.location.pathname === "/switch-user") {
-    return <SwitchUser />;
+  // Check if we're on public pages (accessible without auth)
+  const publicPaths = ["/switch-user", "/login", "/signup"];
+  const currentPath = window.location.pathname;
+
+  if (publicPaths.includes(currentPath)) {
+    if (currentPath === "/switch-user") return <SwitchUser />;
+    if (currentPath === "/login") return <Login />;
+    if (currentPath === "/signup") return <Signup />;
   }
 
   // Show landing page while loading or not authenticated
