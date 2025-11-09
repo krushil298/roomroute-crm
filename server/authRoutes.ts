@@ -47,6 +47,14 @@ router.post("/signup", async (req, res) => {
     // Set session
     setUserSession(req, user);
 
+    // Explicitly save session and handle errors
+    await new Promise<void>((resolve, reject) => {
+      req.session.save((err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+
     // Return user (without password)
     const { password: _, ...userWithoutPassword } = user;
     res.json(userWithoutPassword);
@@ -78,6 +86,14 @@ router.post("/login", async (req, res) => {
 
     // Set session
     setUserSession(req, user);
+
+    // Explicitly save session and handle errors
+    await new Promise<void>((resolve, reject) => {
+      req.session.save((err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
 
     // Return user (without password)
     const { password: _, ...userWithoutPassword } = user;
