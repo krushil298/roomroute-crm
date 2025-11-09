@@ -1,7 +1,10 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { isAuthenticated, getUserFromSession } from "./auth";
+import authRoutes from "./authRoutes";
+import session from "express-session";
+import connectPg from "connect-pg-simple";
 import { z } from "zod";
 import {
   insertContactSchema,
@@ -14,18 +17,9 @@ import {
   type InsertActivity,
 } from "@shared/schema";
 
-// Helper function to get user from request, with email fallback
-// Handles cases where OIDC sub != database user ID
+// Helper function to get user from request
 async function getUserFromRequest(req: any): Promise<any> {
-  const userId = req.user.claims.sub;
-  const userEmail = req.user.claims.email;
-  
-  // Try ID first, fall back to email
-  let user = await storage.getUser(userId);
-  if (!user && userEmail) {
-    user = await storage.getUserByEmail(userEmail);
-  }
-  return user;
+  return await getUserFromSession(req);
 }
 
 // Helper function to get effective organization ID
@@ -64,11 +58,33 @@ function getSenderName(user: any): string {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Setup authentication
-  await setupAuth(app);
+  // Setup session
+  const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
+  const pgStore = connectPg(session);
+  const sessionStore = new pgStore({
+    conString: process.env.DATABASE_URL!,
+    createTableIfMissing: false,
+    ttl: sessionTtl,
+    tableName: "sessions",
+  });
 
-  // Auth routes
-  app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
+  app.use(session({
+    secret: process.env.SESSION_SECRET!,
+    store: sessionStore,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: sessionTtl,
+    },
+  }));
+
+  // Mount auth routes
+  app.use("/api/auth", authRoutes);
+
+  // Legacy auth route - keep for backward compatibility but will be removed
+  app.get("/api/auth/user-old", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const userEmail = req.user.claims.email;

@@ -14,16 +14,19 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// User storage table for Replit Auth
+// User storage table
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  email: varchar("email").unique(),
+  email: varchar("email").unique().notNull(),
+  password: varchar("password"), // Hashed password for email/password auth
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
+  birthday: timestamp("birthday"), // User's birthday
   profileImageUrl: varchar("profile_image_url"),
   organizationId: varchar("organization_id").references(() => organizations.id), // Legacy: primary org
   role: text("role").notNull().default("user"), // Global role: user, admin, super_admin
   currentOrganizationId: varchar("current_organization_id"), // For users in multiple orgs
+  authProvider: text("auth_provider").default("email"), // email, google, apple
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
