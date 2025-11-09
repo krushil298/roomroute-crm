@@ -33,8 +33,15 @@ import { LogOut } from "lucide-react";
 import logoUrl from "@assets/image_1762307821152.png";
 
 function AuthenticatedRouter() {
-  const handleLogout = () => {
-    window.location.href = "/api/logout";
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      window.location.href = "/login";
+    } catch (error) {
+      console.error("Logout failed:", error);
+      // Force redirect anyway
+      window.location.href = "/login";
+    }
   };
 
   return (
@@ -87,19 +94,27 @@ function Router() {
   }
 
   // Show authenticated app
-  const handleLogout = () => {
+  const handleLogout = async () => {
     // Store last logged-in user info for switch user screen
     if (user) {
-      const userName = user.firstName && user.lastName 
+      const userName = user.firstName && user.lastName
         ? `${user.firstName} ${user.lastName}`
         : user.firstName || user.email || "User";
-      
+
       localStorage.setItem("lastLoggedInUser", JSON.stringify({
         email: user.email || "",
         name: userName
       }));
     }
-    window.location.href = "/api/logout";
+
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      window.location.href = "/login";
+    } catch (error) {
+      console.error("Logout failed:", error);
+      // Force redirect anyway
+      window.location.href = "/login";
+    }
   };
 
   const style = {
