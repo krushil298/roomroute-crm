@@ -63,10 +63,16 @@ router.post("/signup", async (req, res) => {
       return res.status(400).json({ message: error.errors[0].message });
     }
     console.error("Signup error:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.error("Error type:", typeof error);
+    console.error("Error constructor:", error?.constructor?.name);
+    console.error("Error stack:", error instanceof Error ? error.stack : "No stack");
+    const errorMessage = error instanceof Error ? error.message : String(error);
     res.status(500).json({
       message: "Failed to create account",
-      error: process.env.NODE_ENV === "production" ? errorMessage : error
+      error: errorMessage,
+      errorType: typeof error,
+      errorConstructor: error?.constructor?.name,
+      stack: error instanceof Error ? error.stack : undefined
     });
   }
 });
