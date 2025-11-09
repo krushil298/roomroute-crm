@@ -59,12 +59,13 @@ function getSenderName(user: any): string {
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup session
-  const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
+  const sessionTtlMs = 7 * 24 * 60 * 60 * 1000; // 1 week in milliseconds
+  const sessionTtlSeconds = 7 * 24 * 60 * 60; // 1 week in seconds
   const pgStore = connectPg(session);
   const sessionStore = new pgStore({
     conString: process.env.DATABASE_URL!,
     createTableIfMissing: false,
-    ttl: sessionTtl,
+    ttl: sessionTtlSeconds, // TTL must be in seconds, not milliseconds
     tableName: "sessions",
   });
 
@@ -77,7 +78,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: process.env.NODE_ENV === "production" ? 'lax' : 'lax',
-      maxAge: sessionTtl,
+      maxAge: sessionTtlMs, // maxAge is in milliseconds
     },
     name: 'connect.sid',
   }));
