@@ -63,7 +63,11 @@ router.post("/signup", async (req, res) => {
       return res.status(400).json({ message: error.errors[0].message });
     }
     console.error("Signup error:", error);
-    res.status(500).json({ message: "Failed to create account" });
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    res.status(500).json({
+      message: "Failed to create account",
+      error: process.env.NODE_ENV === "production" ? errorMessage : error
+    });
   }
 });
 
