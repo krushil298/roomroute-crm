@@ -245,6 +245,7 @@ export default function Dashboard() {
       type: activity.type as "call" | "email" | "meeting" | "note",
       title: activity.description || "",
       contact: contacts.find(c => c.id === activity.contactId)?.leadOrProject || "Unknown",
+      contactId: activity.contactId || undefined,
       timestamp: formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true }),
     }));
 

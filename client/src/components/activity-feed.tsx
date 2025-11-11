@@ -2,6 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Phone, Mail, Calendar, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useLocation } from "wouter";
 
 type ActivityType = "call" | "email" | "meeting" | "note";
 
@@ -10,6 +11,7 @@ interface Activity {
   type: ActivityType;
   title: string;
   contact: string;
+  contactId?: string;
   timestamp: string;
   avatarUrl?: string;
 }
@@ -33,6 +35,15 @@ const activityColors: Record<ActivityType, string> = {
 };
 
 export function ActivityFeed({ activities }: ActivityFeedProps) {
+  const [, setLocation] = useLocation();
+
+  const handleContactClick = (contactId: string | undefined) => {
+    if (contactId) {
+      setLocation("/contacts");
+      // Optionally, you could add a query param or state to highlight/open the contact
+    }
+  };
+
   return (
     <Card className="p-6">
       <h2 className="text-lg font-semibold mb-4">Recent Activity</h2>
@@ -51,7 +62,16 @@ export function ActivityFeed({ activities }: ActivityFeedProps) {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium">{activity.title}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {activity.contact} • {activity.timestamp}
+                  {activity.contactId ? (
+                    <button
+                      onClick={() => handleContactClick(activity.contactId)}
+                      className="hover:underline hover:text-primary cursor-pointer transition-colors"
+                    >
+                      {activity.contact}
+                    </button>
+                  ) : (
+                    activity.contact
+                  )} • {activity.timestamp}
                 </p>
               </div>
               <Badge variant="secondary" className="shrink-0 text-xs">
