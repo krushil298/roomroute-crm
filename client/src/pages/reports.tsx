@@ -131,63 +131,89 @@ export default function Reports() {
   };
 
   const exportToCSV = (data: any[], filename: string) => {
-    if (data.length === 0) return;
-    
-    const headers = Object.keys(data[0]);
-    const csv = [
-      headers.join(","),
-      ...data.map(row => headers.map(header => {
-        const value = row[header];
-        return typeof value === 'string' && value.includes(',') ? `"${value}"` : value;
-      }).join(","))
-    ].join("\n");
+    try {
+      if (data.length === 0) {
+        alert("No data to export");
+        return;
+      }
 
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${filename}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+      const headers = Object.keys(data[0]);
+      const csv = [
+        headers.join(","),
+        ...data.map(row => headers.map(header => {
+          const value = row[header];
+          return typeof value === 'string' && value.includes(',') ? `"${value}"` : value;
+        }).join(","))
+      ].join("\n");
+
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${filename}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("CSV export error:", error);
+      alert("Failed to export CSV");
+    }
   };
 
   const exportToExcel = (data: any[], filename: string) => {
-    if (data.length === 0) return;
+    try {
+      if (data.length === 0) {
+        alert("No data to export");
+        return;
+      }
 
-    const worksheet = XLSX.utils.json_to_sheet(data);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Report");
-    XLSX.writeFile(workbook, `${filename}.xlsx`);
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Report");
+      XLSX.writeFile(workbook, `${filename}.xlsx`);
+    } catch (error) {
+      console.error("Excel export error:", error);
+      alert("Failed to export Excel file");
+    }
   };
 
   const exportToPDF = (data: any[], filename: string, title: string) => {
-    if (data.length === 0) return;
+    try {
+      if (data.length === 0) {
+        alert("No data to export");
+        return;
+      }
 
-    const doc = new jsPDF();
-    
-    // Add title
-    doc.setFontSize(16);
-    doc.text(title, 14, 15);
-    
-    // Add date range if applicable
-    if (startDate && endDate) {
-      doc.setFontSize(10);
-      doc.text(`Date Range: ${format(parseISO(startDate), "MMM dd, yyyy")} - ${format(parseISO(endDate), "MMM dd, yyyy")}`, 14, 25);
+      const doc = new jsPDF();
+
+      // Add title
+      doc.setFontSize(16);
+      doc.text(title, 14, 15);
+
+      // Add date range if applicable
+      if (startDate && endDate) {
+        doc.setFontSize(10);
+        doc.text(`Date Range: ${format(parseISO(startDate), "MMM dd, yyyy")} - ${format(parseISO(endDate), "MMM dd, yyyy")}`, 14, 25);
+      }
+
+      // Convert data to table format
+      const headers = Object.keys(data[0]);
+      const rows = data.map(row => headers.map(header => row[header]));
+
+      autoTable(doc, {
+        head: [headers],
+        body: rows,
+        startY: startDate && endDate ? 30 : 25,
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [66, 66, 66] },
+      });
+
+      doc.save(`${filename}.pdf`);
+    } catch (error) {
+      console.error("PDF export error:", error);
+      alert("Failed to export PDF");
     }
-
-    // Convert data to table format
-    const headers = Object.keys(data[0]);
-    const rows = data.map(row => headers.map(header => row[header]));
-
-    autoTable(doc, {
-      head: [headers],
-      body: rows,
-      startY: startDate && endDate ? 30 : 25,
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [66, 66, 66] },
-    });
-
-    doc.save(`${filename}.pdf`);
   };
 
   const renderReport = () => {
