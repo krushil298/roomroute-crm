@@ -37,7 +37,7 @@ export default function Pipeline() {
     defaultValues: {
       title: "",
       value: "0.00",
-      stage: "qualified",
+      stage: "lead",
       contactId: null,
       expectedCloseDate: null,
     },
@@ -281,6 +281,7 @@ export default function Pipeline() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        <SelectItem value="lead">New</SelectItem>
                         <SelectItem value="qualified">Qualified</SelectItem>
                         <SelectItem value="proposal">Proposal</SelectItem>
                         <SelectItem value="negotiation">Negotiation</SelectItem>

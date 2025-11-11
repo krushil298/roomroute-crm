@@ -43,7 +43,7 @@ export default function Deals() {
     defaultValues: {
       title: "",
       value: "0.00",
-      stage: "qualified",
+      stage: "lead",
       contactId: null,
       expectedCloseDate: null,
     },
@@ -257,7 +257,7 @@ export default function Deals() {
                   <div className="flex items-center gap-2">
                     <DollarSign className="h-4 w-4 text-muted-foreground" />
                     <span className="text-2xl font-bold tabular-nums" data-testid={`text-deal-value-${deal.id}`}>
-                      ${deal.value.toLocaleString()}
+                      {deal.value.toLocaleString()}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -358,6 +358,7 @@ export default function Deals() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        <SelectItem value="lead">New</SelectItem>
                         <SelectItem value="qualified">Qualified</SelectItem>
                         <SelectItem value="proposal">Proposal</SelectItem>
                         <SelectItem value="negotiation">Negotiation</SelectItem>
