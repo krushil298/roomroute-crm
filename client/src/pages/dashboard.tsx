@@ -239,7 +239,7 @@ export default function Dashboard() {
   ];
 
   const recentActivities = activities
-    .slice(0, 5)
+    .slice(0, 10)
     .map((activity) => ({
       id: activity.id,
       type: activity.type as "call" | "email" | "meeting" | "note",
@@ -319,20 +319,6 @@ export default function Dashboard() {
         </div>
         <div>
           <QuickActions />
-        </div>
-      </div>
-
-      <div>
-        <h2 className="text-lg font-semibold mb-4">Pipeline Overview</h2>
-        <div className="flex gap-4 overflow-x-auto pb-4">
-          {pipelineData.map((stage) => (
-            <PipelineStage 
-              key={stage.stage} 
-              {...stage} 
-              onDealClick={stage.stage !== "Leads" ? handleDealClick : undefined}
-              onDeleteDeal={stage.stage !== "Leads" ? handleDeleteDeal : undefined}
-            />
-          ))}
         </div>
       </div>
 

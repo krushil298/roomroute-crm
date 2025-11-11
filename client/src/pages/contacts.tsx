@@ -64,6 +64,8 @@ export default function Contacts() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const contactsPerPage = 10;
   const { toast } = useToast();
 
   const { data: contacts = [], isLoading } = useQuery<Contact[]>({
@@ -201,16 +203,31 @@ export default function Contacts() {
     form.reset();
   };
 
-  const filteredContacts = contacts.filter((contact) => {
-    const search = searchQuery.toLowerCase();
-    return (
-      contact.leadOrProject.toLowerCase().includes(search) ||
-      (contact.company && contact.company.toLowerCase().includes(search)) ||
-      (contact.primaryContact && contact.primaryContact.toLowerCase().includes(search)) ||
-      (contact.email && contact.email.toLowerCase().includes(search)) ||
-      contact.segment.toLowerCase().includes(search)
-    );
-  });
+  // Filter and sort contacts alphabetically
+  const filteredAndSortedContacts = contacts
+    .filter((contact) => {
+      const search = searchQuery.toLowerCase();
+      return (
+        contact.leadOrProject.toLowerCase().includes(search) ||
+        (contact.company && contact.company.toLowerCase().includes(search)) ||
+        (contact.primaryContact && contact.primaryContact.toLowerCase().includes(search)) ||
+        (contact.email && contact.email.toLowerCase().includes(search)) ||
+        contact.segment.toLowerCase().includes(search)
+      );
+    })
+    .sort((a, b) => a.leadOrProject.localeCompare(b.leadOrProject));
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredAndSortedContacts.length / contactsPerPage);
+  const startIndex = (currentPage - 1) * contactsPerPage;
+  const endIndex = startIndex + contactsPerPage;
+  const paginatedContacts = filteredAndSortedContacts.slice(startIndex, endIndex);
+
+  // Reset to page 1 when search changes
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    setCurrentPage(1);
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -236,7 +253,7 @@ export default function Contacts() {
           placeholder="Search leads..."
           className="pl-9"
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={(e) => handleSearchChange(e.target.value)}
           data-testid="input-search-contacts"
         />
       </div>
@@ -247,24 +264,60 @@ export default function Contacts() {
             <div key={i} className="h-48 bg-muted animate-pulse rounded-md" />
           ))}
         </div>
-      ) : filteredContacts.length === 0 ? (
+      ) : filteredAndSortedContacts.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-muted-foreground">
             {searchQuery ? "No leads found" : "No leads yet. Add your first lead!"}
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredContacts.map((contact) => (
-            <ContactCard
-              key={contact.id}
-              {...contact}
-              avatarUrl={contact.avatarUrl ?? undefined}
-              onEdit={() => handleEditContact(contact)}
-              onViewDetails={() => handleViewContact(contact)}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {paginatedContacts.map((contact) => (
+              <ContactCard
+                key={contact.id}
+                {...contact}
+                avatarUrl={contact.avatarUrl ?? undefined}
+                onEdit={() => handleEditContact(contact)}
+                onViewDetails={() => handleViewContact(contact)}
+              />
+            ))}
+          </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                Showing {startIndex + 1} to {Math.min(endIndex, filteredAndSortedContacts.length)} of {filteredAndSortedContacts.length} contacts
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  data-testid="button-prev-page"
+                >
+                  Previous
+                </Button>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  data-testid="button-next-page"
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       <Dialog open={isDialogOpen || selectedContact !== null} onOpenChange={(open) => {
