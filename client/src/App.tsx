@@ -25,6 +25,8 @@ import AdminOverview from "@/pages/admin-overview";
 import Landing from "@/pages/landing";
 import Login from "@/pages/login";
 import Signup from "@/pages/signup";
+import ForgotPassword from "@/pages/forgot-password";
+import ResetPassword from "@/pages/reset-password";
 import Onboarding from "@/pages/onboarding";
 import SwitchUser from "@/pages/switch-user";
 import NotFound from "@/pages/not-found";
@@ -68,13 +70,15 @@ function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
 
   // Check if we're on public pages (accessible without auth)
-  const publicPaths = ["/switch-user", "/login", "/signup"];
+  const publicPaths = ["/switch-user", "/login", "/signup", "/forgot-password"];
   const currentPath = window.location.pathname;
 
-  if (publicPaths.includes(currentPath)) {
+  if (publicPaths.includes(currentPath) || currentPath.startsWith("/reset-password/")) {
     if (currentPath === "/switch-user") return <SwitchUser />;
     if (currentPath === "/login") return <Login />;
     if (currentPath === "/signup") return <Signup />;
+    if (currentPath === "/forgot-password") return <ForgotPassword />;
+    if (currentPath.startsWith("/reset-password/")) return <ResetPassword />;
   }
 
   // Show landing page while loading or not authenticated

@@ -17,6 +17,8 @@ import {
   type InsertUserOrganization,
   type UserInvitation,
   type InsertUserInvitation,
+  type PasswordResetToken,
+  type InsertPasswordResetToken,
   users,
   contacts,
   deals,
@@ -26,6 +28,7 @@ import {
   organizations,
   userOrganizations,
   userInvitations,
+  passwordResetTokens,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, ne, sql } from "drizzle-orm";
@@ -66,7 +69,13 @@ export interface IStorage {
   updateInvitationStatus(id: string, status: string, acceptedAt?: Date): Promise<UserInvitation | undefined>;
   cancelInvitation(id: string): Promise<void>;
   deleteInvitation(id: string): Promise<void>;
-  
+
+  // Password Reset Token operations
+  createPasswordResetToken(token: InsertPasswordResetToken): Promise<PasswordResetToken>;
+  getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined>;
+  markPasswordResetTokenAsUsed(token: string): Promise<void>;
+  deleteExpiredPasswordResetTokens(): Promise<number>;
+
   // Contact operations (filtered by organization)
   getAllContacts(organizationId: string): Promise<Contact[]>;
   getContact(id: string, organizationId: string): Promise<Contact | undefined>;
@@ -630,6 +639,40 @@ export class DbStorage implements IStorage {
     
     console.log(`✅ Nuclear cleanup completed:`, result);
     return { deleted: result };
+  }
+
+  // Password Reset Token operations
+  async createPasswordResetToken(tokenData: InsertPasswordResetToken): Promise<PasswordResetToken> {
+    const [token] = await db.insert(passwordResetTokens).values(tokenData).returning();
+    return token;
+  }
+
+  async getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined> {
+    const [resetToken] = await db
+      .select()
+      .from(passwordResetTokens)
+      .where(
+        and(
+          eq(passwordResetTokens.token, token),
+          eq(passwordResetTokens.used, false)
+        )
+      );
+    return resetToken;
+  }
+
+  async markPasswordResetTokenAsUsed(token: string): Promise<void> {
+    await db
+      .update(passwordResetTokens)
+      .set({ used: true })
+      .where(eq(passwordResetTokens.token, token));
+  }
+
+  async deleteExpiredPasswordResetTokens(): Promise<number> {
+    const result = await db
+      .delete(passwordResetTokens)
+      .where(sql`${passwordResetTokens.expiresAt} < NOW()`)
+      .returning();
+    return result.length;
   }
 }
 

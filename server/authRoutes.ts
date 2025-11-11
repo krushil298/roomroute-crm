@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { storage } from "./storage";
 import { hashPassword, comparePassword, isAuthenticated, getUserFromSession, setUserSession, clearUserSession } from "./auth";
+import crypto from "crypto";
 
 const router = Router();
 
@@ -176,6 +177,158 @@ router.get("/user", isAuthenticated, async (req, res) => {
   } catch (error) {
     console.error("Error fetching user:", error);
     res.status(500).json({ message: "Failed to fetch user" });
+  }
+});
+
+// POST /api/auth/forgot-password
+router.post("/forgot-password", async (req, res) => {
+  try {
+    const schema = z.object({
+      email: z.string().email("Invalid email address"),
+    });
+
+    const { email } = schema.parse(req.body);
+
+    // Find user by email
+    const user = await storage.getUserByEmail(email);
+
+    // Always return success (security: don't reveal if email exists)
+    if (!user) {
+      return res.json({
+        success: true,
+        message: "If an account exists with this email, you will receive a password reset link."
+      });
+    }
+
+    // Generate secure random token
+    const token = crypto.randomBytes(32).toString('hex');
+
+    // Token expires in 30 minutes
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+
+    // Save token to database
+    await storage.createPasswordResetToken({
+      userId: user.id,
+      token,
+      expiresAt,
+      used: false,
+    });
+
+    // Send password reset email
+    const appUrl = process.env.APP_URL || 'http://localhost:5000';
+    const resetUrl = `${appUrl}/reset-password/${token}`;
+
+    const senderEmail = process.env.SENDER_EMAIL || "onboarding@resend.dev";
+    const fromAddress = `RoomRoute <${senderEmail}>`;
+
+    const subject = "Reset Your Password - RoomRoute";
+    const htmlBody = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2>Reset Your Password</h2>
+        <p>Hi ${user.firstName || 'there'},</p>
+        <p>We received a request to reset your password for your RoomRoute account.</p>
+        <p style="margin: 30px 0;">
+          <a href="${resetUrl}" style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+            Reset Password
+          </a>
+        </p>
+        <p>Or copy and paste this link into your browser:</p>
+        <p style="color: #6b7280; word-break: break-all;">${resetUrl}</p>
+        <p style="margin-top: 30px;">This link will expire in 30 minutes.</p>
+        <p>If you didn't request a password reset, you can safely ignore this email.</p>
+        <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
+        <p style="color: #6b7280; font-size: 14px;">
+          This is an automated email from RoomRoute. Please do not reply to this email.
+        </p>
+      </div>
+    `;
+
+    if (!process.env.RESEND_API_KEY) {
+      console.log("Password reset email (Resend not configured):", {
+        to: email,
+        resetUrl,
+        expiresAt,
+      });
+    } else {
+      const { Resend } = await import("resend");
+      const resend = new Resend(process.env.RESEND_API_KEY);
+
+      await resend.emails.send({
+        from: fromAddress,
+        to: [email],
+        subject,
+        html: htmlBody,
+      });
+
+      console.log(`✅ Password reset email sent to ${email}`);
+    }
+
+    res.json({
+      success: true,
+      message: "If an account exists with this email, you will receive a password reset link.",
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ message: error.errors[0].message });
+    }
+    console.error("Forgot password error:", error);
+    res.status(500).json({ message: "Failed to process password reset request" });
+  }
+});
+
+// POST /api/auth/reset-password
+router.post("/reset-password", async (req, res) => {
+  try {
+    const schema = z.object({
+      token: z.string().min(1, "Token is required"),
+      password: z.string().min(8, "Password must be at least 8 characters"),
+    });
+
+    const { token, password } = schema.parse(req.body);
+
+    // Get reset token from database
+    const resetToken = await storage.getPasswordResetToken(token);
+
+    if (!resetToken) {
+      return res.status(400).json({ message: "Invalid or expired reset token" });
+    }
+
+    // Check if token is expired
+    if (new Date() > resetToken.expiresAt) {
+      return res.status(400).json({ message: "Reset token has expired" });
+    }
+
+    // Get user
+    const user = await storage.getUser(resetToken.userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Hash new password
+    const hashedPassword = await hashPassword(password);
+
+    // Update user password
+    await storage.upsertUser({
+      id: user.id,
+      email: user.email,
+      password: hashedPassword,
+    });
+
+    // Mark token as used
+    await storage.markPasswordResetTokenAsUsed(token);
+
+    console.log(`✅ Password reset successful for user: ${user.email}`);
+
+    res.json({
+      success: true,
+      message: "Password reset successfully. You can now log in with your new password.",
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ message: error.errors[0].message });
+    }
+    console.error("Reset password error:", error);
+    res.status(500).json({ message: "Failed to reset password" });
   }
 });
 
