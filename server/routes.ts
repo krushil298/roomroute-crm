@@ -316,7 +316,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const replyToEmail = user.email || undefined;
       
       // Create invitation email content - different for org invites vs general invites
-      const baseUrl = process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : 'http://localhost:5000';
+      // Use APP_URL if set (production), otherwise fall back to localhost for development
+      const baseUrl = process.env.APP_URL || 'http://localhost:5000';
       const loginUrl = `${baseUrl}/login`;
       
       let subject: string;
@@ -529,7 +530,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const replyToEmail = user.email || undefined;
       
       // Create email content
-      const baseUrl = process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` : 'http://localhost:5000';
+      // Use APP_URL if set (production), otherwise fall back to localhost for development
+      const baseUrl = process.env.APP_URL || 'http://localhost:5000';
       const loginUrl = `${baseUrl}/login`;
       
       const subject = `You're invited to join ${org.name} on RoomRoute`;
