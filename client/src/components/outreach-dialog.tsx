@@ -23,6 +23,12 @@ interface OutreachAttempt {
 }
 
 const CONTACT_METHODS = ["Call", "Email", "Text", "In-Person", "LinkedIn", "Other"];
+const STATUS_OPTIONS = [
+  { value: "", label: "(No status change)" },
+  { value: "qualified", label: "Qualified" },
+  { value: "proposal", label: "Proposal" },
+  { value: "closed", label: "Closed" },
+];
 
 export function OutreachDialog({ open, onOpenChange, contact }: OutreachDialogProps) {
   const { toast } = useToast();
@@ -31,6 +37,7 @@ export function OutreachDialog({ open, onOpenChange, contact }: OutreachDialogPr
     { date: "", method: "", notes: "" },
   ]);
   const [additionalNotes, setAdditionalNotes] = useState("");
+  const [statusChange, setStatusChange] = useState("");
 
   const mapMethodToActivityType = (method: string): string => {
     const methodMap: Record<string, string> = {
@@ -47,17 +54,17 @@ export function OutreachDialog({ open, onOpenChange, contact }: OutreachDialogPr
   const saveOutreachMutation = useMutation({
     mutationFn: async () => {
       const validAttempts = attempts.filter(a => a.date && a.method);
-      
+
       if (validAttempts.length === 0 && !additionalNotes) {
         throw new Error("Please add at least one outreach attempt or notes");
       }
 
       // Save each attempt as an activity with proper type
       for (const attempt of validAttempts) {
-        const description = attempt.notes 
-          ? `${attempt.method}: ${attempt.notes}` 
+        const description = attempt.notes
+          ? `${attempt.method}: ${attempt.notes}`
           : attempt.method;
-        
+
         await apiRequest("POST", "/api/activities", {
           contactId: contact.id,
           type: mapMethodToActivityType(attempt.method),
@@ -73,12 +80,38 @@ export function OutreachDialog({ open, onOpenChange, contact }: OutreachDialogPr
           description: additionalNotes,
         });
       }
+
+      // If status change is selected, update the associated deal
+      if (statusChange) {
+        // Get deals associated with this contact
+        const dealsResponse = await apiRequest("GET", `/api/contacts/${contact.id}/deals`);
+        const deals = await dealsResponse.json();
+
+        // Update the first active deal (non-closed) if it exists
+        const activeDeal = deals.find((d: any) => d.stage.toLowerCase() !== 'closed');
+        if (activeDeal) {
+          await apiRequest("PATCH", `/api/deals/${activeDeal.id}`, {
+            stage: statusChange,
+          });
+        } else {
+          // If no active deal exists, create one with the new status
+          await apiRequest("POST", "/api/deals", {
+            title: contact.leadOrProject || "New Deal",
+            contactId: contact.id,
+            value: contact.potentialValue || "0.00",
+            stage: statusChange,
+          });
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/deals"] });
       toast({
         title: "Success",
-        description: "Outreach logged successfully",
+        description: statusChange
+          ? "Outreach logged and deal status updated successfully"
+          : "Outreach logged successfully",
       });
       onOpenChange(false);
       setAttempts([
@@ -86,6 +119,7 @@ export function OutreachDialog({ open, onOpenChange, contact }: OutreachDialogPr
         { date: "", method: "", notes: "" },
       ]);
       setAdditionalNotes("");
+      setStatusChange("");
     },
     onError: (error: Error) => {
       toast({
@@ -173,6 +207,28 @@ export function OutreachDialog({ open, onOpenChange, contact }: OutreachDialogPr
               data-testid="textarea-additional-notes"
               rows={4}
             />
+          </div>
+
+          <div className="space-y-2 border-t pt-4">
+            <Label htmlFor="status-change">Change Deal Status (Optional)</Label>
+            <Select
+              value={statusChange}
+              onValueChange={setStatusChange}
+            >
+              <SelectTrigger id="status-change" data-testid="select-status-change">
+                <SelectValue placeholder="No status change" />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              If this outreach led to progress, update the deal stage
+            </p>
           </div>
 
           <div className="flex justify-end gap-3">
