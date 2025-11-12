@@ -6,7 +6,6 @@ import authRoutes from "./authRoutes";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { z } from "zod";
-import passport, { initializeGoogleAuth } from "./googleAuth";
 import {
   insertContactSchema,
   insertDealSchema,
@@ -84,11 +83,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     name: 'connect.sid',
   }));
 
-  // Initialize Passport (must be after session setup)
-  app.use(passport.initialize());
-
-  // Initialize Google OAuth strategy if configured
-  initializeGoogleAuth();
+  // Initialize Passport for Google OAuth only if configured
+  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+    const { default: passport, initializeGoogleAuth } = await import("./googleAuth");
+    app.use(passport.initialize());
+    initializeGoogleAuth();
+    console.log("✅ Google OAuth enabled");
+  }
 
   // Mount auth routes
   app.use("/api/auth", authRoutes);
