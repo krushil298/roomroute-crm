@@ -769,7 +769,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "No organization" });
       }
       const contacts = await storage.getAllContacts(orgId);
-      res.json(contacts);
+
+      // Enrich with creator information
+      const enrichedContacts = await Promise.all(
+        contacts.map(async (contact) => {
+          const creatorName = contact.createdBy
+            ? await storage.getUser(contact.createdBy).then(u => u ? `${u.firstName} ${u.lastName}` : null)
+            : null;
+          const updaterName = contact.updatedBy
+            ? await storage.getUser(contact.updatedBy).then(u => u ? `${u.firstName} ${u.lastName}` : null)
+            : null;
+
+          return {
+            ...contact,
+            creatorName,
+            updaterName,
+          };
+        })
+      );
+
+      res.json(enrichedContacts);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch contacts" });
     }
@@ -903,7 +922,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "No organization" });
       }
       const deals = await storage.getAllDeals(orgId);
-      res.json(deals);
+
+      // Enrich with creator information
+      const enrichedDeals = await Promise.all(
+        deals.map(async (deal) => {
+          const creatorName = deal.createdBy
+            ? await storage.getUser(deal.createdBy).then(u => u ? `${u.firstName} ${u.lastName}` : null)
+            : null;
+          const updaterName = deal.updatedBy
+            ? await storage.getUser(deal.updatedBy).then(u => u ? `${u.firstName} ${u.lastName}` : null)
+            : null;
+
+          return {
+            ...deal,
+            creatorName,
+            updaterName,
+          };
+        })
+      );
+
+      res.json(enrichedDeals);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch deals" });
     }
@@ -1034,7 +1072,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "No organization" });
       }
       const activities = await storage.getAllActivities(orgId);
-      res.json(activities);
+
+      // Enrich with creator information
+      const enrichedActivities = await Promise.all(
+        activities.map(async (activity) => {
+          const creatorName = activity.createdBy
+            ? await storage.getUser(activity.createdBy).then(u => u ? `${u.firstName} ${u.lastName}` : null)
+            : null;
+
+          return {
+            ...activity,
+            creatorName,
+          };
+        })
+      );
+
+      res.json(enrichedActivities);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch activities" });
     }

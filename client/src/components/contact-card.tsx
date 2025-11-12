@@ -19,6 +19,10 @@ interface ContactCardProps {
   estRoomNights: number | null;
   potentialValue?: string | null;
   avatarUrl?: string;
+  createdAt?: Date | string;
+  creatorName?: string | null;
+  updatedAt?: Date | string;
+  updaterName?: string | null;
   onEdit?: () => void;
   onViewDetails?: () => void;
   onDelete?: () => void;
@@ -44,6 +48,10 @@ export function ContactCard({
   estRoomNights,
   potentialValue,
   avatarUrl,
+  createdAt,
+  creatorName,
+  updatedAt,
+  updaterName,
   onEdit,
   onViewDetails,
   onDelete,
@@ -150,6 +158,23 @@ export function ContactCard({
             </div>
           )}
         </div>
+
+        {/* Creator/Updater Information */}
+        {(creatorName || updaterName) && (
+          <div className="mt-3 pt-3 border-t text-xs text-muted-foreground space-y-1">
+            {creatorName && createdAt && (
+              <div>
+                Created by {creatorName} on {new Date(createdAt).toLocaleDateString()}
+              </div>
+            )}
+            {updaterName && updatedAt && (
+              <div>
+                Updated by {updaterName} on {new Date(updatedAt).toLocaleDateString()}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex gap-2 mt-4">
           <Button
             variant="outline"
@@ -160,8 +185,8 @@ export function ContactCard({
           >
             Edit
           </Button>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="sm"
             onClick={onViewDetails}
             data-testid={`button-view-contact-${id}`}

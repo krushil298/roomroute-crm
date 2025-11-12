@@ -10,6 +10,10 @@ interface DealCardProps {
   contact: string;
   closingDate: string;
   probability?: number;
+  createdAt?: Date | string;
+  creatorName?: string | null;
+  updatedAt?: Date | string;
+  updaterName?: string | null;
 }
 
 const stageColors: Record<string, string> = {
@@ -27,6 +31,10 @@ export function DealCard({
   contact,
   closingDate,
   probability,
+  createdAt,
+  creatorName,
+  updatedAt,
+  updaterName,
 }: DealCardProps) {
   return (
     <Card className="p-6 hover-elevate" data-testid={`card-deal-${title.toLowerCase().replace(/\s+/g, '-')}`}>
@@ -68,6 +76,22 @@ export function DealCard({
                 style={{ width: `${probability}%` }}
               />
             </div>
+          </div>
+        )}
+
+        {/* Creator/Updater Information */}
+        {(creatorName || updaterName) && (
+          <div className="pt-3 mt-3 border-t text-xs text-muted-foreground space-y-1">
+            {creatorName && createdAt && (
+              <div>
+                Created by {creatorName} on {new Date(createdAt).toLocaleDateString()}
+              </div>
+            )}
+            {updaterName && updatedAt && (
+              <div>
+                Updated by {updaterName} on {new Date(updatedAt).toLocaleDateString()}
+              </div>
+            )}
           </div>
         )}
       </div>
