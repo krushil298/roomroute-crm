@@ -155,13 +155,9 @@ export default function Dashboard() {
     return createdAt >= previousMonthStart && createdAt <= previousMonthEnd;
   });
 
-  const currentMonthLeadPipeline = currentMonthContacts.reduce((sum, contact) => 
-    sum + Number(contact.potentialValue || 0), 0
-  );
-
-  const previousMonthLeadPipeline = previousMonthContacts.reduce((sum, contact) => 
-    sum + Number(contact.potentialValue || 0), 0
-  );
+  // These will be recalculated after filtering contacts with active deals
+  let currentMonthLeadPipeline = 0;
+  let previousMonthLeadPipeline = 0;
 
   const currentMonthDealPipeline = deals
     .filter(d => {
@@ -177,13 +173,35 @@ export default function Dashboard() {
     })
     .reduce((sum, deal) => sum + Number(deal.value), 0);
 
+  // Helper: Check if contact has moved to "Deal" (qualified, proposal, or closed)
+  const contactHasActiveDeal = (contactId: string) => {
+    return deals.some(deal =>
+      deal.contactId === contactId &&
+      (deal.stage === 'qualified' || deal.stage === 'proposal' || deal.stage === 'closed')
+    );
+  };
+
+  // Filter contacts that are still "leads" (no active deals in qualified/proposal/closed)
+  const leadContacts = contacts.filter(contact => !contactHasActiveDeal(contact.id));
+  const currentMonthLeadContacts = currentMonthContacts.filter(contact => !contactHasActiveDeal(contact.id));
+  const previousMonthLeadContacts = previousMonthContacts.filter(contact => !contactHasActiveDeal(contact.id));
+
+  // Calculate monthly lead pipelines with filtered contacts
+  currentMonthLeadPipeline = currentMonthLeadContacts.reduce((sum, contact) =>
+    sum + Number(contact.potentialValue || 0), 0
+  );
+
+  previousMonthLeadPipeline = previousMonthLeadContacts.reduce((sum, contact) =>
+    sum + Number(contact.potentialValue || 0), 0
+  );
+
   // Calculate percentage changes
   const calculatePercentChange = (current: number, previous: number) => {
     if (previous === 0) return 0;
     return Math.round(((current - previous) / previous) * 100);
   };
 
-  const totalLeadPipeline = contacts.reduce((sum, contact) => 
+  const totalLeadPipeline = leadContacts.reduce((sum, contact) =>
     sum + Number(contact.potentialValue || 0), 0
   );
 
@@ -238,8 +256,13 @@ export default function Dashboard() {
     },
   ];
 
+  // Filter activities from last 5 days and limit to 5 items
+  const fiveDaysAgo = new Date();
+  fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
+
   const recentActivities = activities
-    .slice(0, 10)
+    .filter(activity => new Date(activity.createdAt) >= fiveDaysAgo)
+    .slice(0, 5)
     .map((activity) => ({
       id: activity.id,
       type: activity.type as "call" | "email" | "meeting" | "note",
@@ -259,8 +282,8 @@ export default function Dashboard() {
         contact: contacts.find(c => c.id === deal.contactId)?.leadOrProject || "Unknown",
       }));
 
-  // Create leads/contacts section for pipeline (filter out $0 value contacts)
-  const leadContacts = contacts
+  // Create leads/contacts section for pipeline (filter out $0 value contacts and those with active deals)
+  const leadContactsForPipeline = leadContacts
     .filter(contact => Number(contact.potentialValue || 0) > 0)
     .map(contact => ({
       id: contact.id,
@@ -272,7 +295,7 @@ export default function Dashboard() {
   const pipelineData = [
     {
       stage: "Leads",
-      deals: leadContacts,
+      deals: leadContactsForPipeline,
       color: "blue",
     },
     {
