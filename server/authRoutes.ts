@@ -34,6 +34,10 @@ router.post("/signup", async (req, res) => {
     // Hash password
     const hashedPassword = await hashPassword(data.password);
 
+    // Check for pending invitations
+    const pendingInvitations = await storage.getInvitationsByEmail(data.email);
+    const pendingInvite = pendingInvitations.find(inv => inv.status === "pending");
+
     // Create user
     const user = await storage.upsertUser({
       email: data.email,
@@ -42,8 +46,22 @@ router.post("/signup", async (req, res) => {
       birthday: data.birthday ? new Date(data.birthday) : undefined,
       password: hashedPassword,
       authProvider: "email",
-      role: "user",
+      role: pendingInvite ? pendingInvite.role : "user",
+      currentOrganizationId: pendingInvite ? pendingInvite.organizationId : undefined,
     });
+
+    // If there's a pending invitation, auto-accept it and add user to organization
+    if (pendingInvite) {
+      await storage.addUserToOrganization({
+        userId: user.id,
+        organizationId: pendingInvite.organizationId,
+        role: pendingInvite.role,
+        active: true,
+      });
+
+      // Mark invitation as accepted
+      await storage.updateInvitationStatus(pendingInvite.id, "accepted", new Date());
+    }
 
     // Set session
     setUserSession(req, user);
@@ -101,6 +119,35 @@ router.post("/login", async (req, res) => {
     const isValid = await comparePassword(data.password, user.password);
     if (!isValid) {
       return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    // Check for pending invitations and auto-accept on login
+    const pendingInvitations = await storage.getInvitationsByEmail(data.email);
+    const pendingInvite = pendingInvitations.find(inv => inv.status === "pending");
+
+    if (pendingInvite) {
+      // Check if user is not already in this organization
+      const userOrgs = await storage.getUserOrganizations(user.id);
+      const alreadyMember = userOrgs.some(org => org.organizationId === pendingInvite.organizationId);
+
+      if (!alreadyMember) {
+        // Add user to organization
+        await storage.addUserToOrganization({
+          userId: user.id,
+          organizationId: pendingInvite.organizationId,
+          role: pendingInvite.role,
+          active: true,
+        });
+
+        // Update user's current organization if not set
+        if (!user.currentOrganizationId) {
+          await storage.updateUserCurrentOrg(user.id, pendingInvite.organizationId);
+          user.currentOrganizationId = pendingInvite.organizationId;
+        }
+
+        // Mark invitation as accepted
+        await storage.updateInvitationStatus(pendingInvite.id, "accepted", new Date());
+      }
     }
 
     // Set session
