@@ -774,10 +774,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const enrichedContacts = await Promise.all(
         contacts.map(async (contact) => {
           const creatorName = contact.createdBy
-            ? await storage.getUser(contact.createdBy).then(u => u ? `${u.firstName} ${u.lastName}` : null)
+            ? await storage.getUser(contact.createdBy).then(u => u ? `${u.firstName} ${u.lastName}` : null).catch(() => null)
             : null;
           const updaterName = contact.updatedBy
-            ? await storage.getUser(contact.updatedBy).then(u => u ? `${u.firstName} ${u.lastName}` : null)
+            ? await storage.getUser(contact.updatedBy).then(u => u ? `${u.firstName} ${u.lastName}` : null).catch(() => null)
             : null;
 
           return {
@@ -790,6 +790,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(enrichedContacts);
     } catch (error) {
+      console.error("[GET /api/contacts] Error:", error);
       res.status(500).json({ error: "Failed to fetch contacts" });
     }
   });
@@ -927,10 +928,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const enrichedDeals = await Promise.all(
         deals.map(async (deal) => {
           const creatorName = deal.createdBy
-            ? await storage.getUser(deal.createdBy).then(u => u ? `${u.firstName} ${u.lastName}` : null)
+            ? await storage.getUser(deal.createdBy).then(u => u ? `${u.firstName} ${u.lastName}` : null).catch(() => null)
             : null;
           const updaterName = deal.updatedBy
-            ? await storage.getUser(deal.updatedBy).then(u => u ? `${u.firstName} ${u.lastName}` : null)
+            ? await storage.getUser(deal.updatedBy).then(u => u ? `${u.firstName} ${u.lastName}` : null).catch(() => null)
             : null;
 
           return {
@@ -943,6 +944,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(enrichedDeals);
     } catch (error) {
+      console.error("[GET /api/deals] Error:", error);
       res.status(500).json({ error: "Failed to fetch deals" });
     }
   });
@@ -1077,7 +1079,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const enrichedActivities = await Promise.all(
         activities.map(async (activity) => {
           const creatorName = activity.createdBy
-            ? await storage.getUser(activity.createdBy).then(u => u ? `${u.firstName} ${u.lastName}` : null)
+            ? await storage.getUser(activity.createdBy).then(u => u ? `${u.firstName} ${u.lastName}` : null).catch(() => null)
             : null;
 
           return {
@@ -1089,6 +1091,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(enrichedActivities);
     } catch (error) {
+      console.error("[GET /api/activities] Error:", error);
       res.status(500).json({ error: "Failed to fetch activities" });
     }
   });
