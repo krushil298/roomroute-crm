@@ -6,6 +6,7 @@ import authRoutes from "./authRoutes";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { z } from "zod";
+import passport, { initializeGoogleAuth } from "./googleAuth";
 import {
   insertContactSchema,
   insertDealSchema,
@@ -82,6 +83,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
     name: 'connect.sid',
   }));
+
+  // Initialize Passport (must be after session setup)
+  app.use(passport.initialize());
+  app.use(passport.session());
+
+  // Initialize Google OAuth strategy if configured
+  initializeGoogleAuth();
 
   // Mount auth routes
   app.use("/api/auth", authRoutes);

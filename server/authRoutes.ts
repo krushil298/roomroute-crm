@@ -3,6 +3,7 @@ import { z } from "zod";
 import { storage } from "./storage";
 import { hashPassword, comparePassword, isAuthenticated, getUserFromSession, setUserSession, clearUserSession } from "./auth";
 import crypto from "crypto";
+import passport from "./googleAuth";
 
 const router = Router();
 
@@ -378,5 +379,40 @@ router.post("/reset-password", async (req, res) => {
     res.status(500).json({ message: "Failed to reset password" });
   }
 });
+
+// GET /api/auth/google - Initiate Google OAuth
+router.get("/google", passport.authenticate("google", {
+  scope: ["profile", "email"]
+}));
+
+// GET /api/auth/google/callback - Google OAuth callback
+router.get("/google/callback",
+  passport.authenticate("google", { session: false, failureRedirect: "/login?error=auth_failed" }),
+  async (req, res) => {
+    try {
+      // Set session for the authenticated user
+      setUserSession(req, req.user as any);
+
+      // Explicitly save session
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((err) => {
+          if (err) {
+            console.error("[Google OAuth] Session save error:", err);
+            reject(err);
+          } else {
+            console.log("[Google OAuth] Session saved successfully");
+            resolve();
+          }
+        });
+      });
+
+      // Redirect to dashboard
+      res.redirect("/");
+    } catch (error) {
+      console.error("[Google OAuth] Callback error:", error);
+      res.redirect("/login?error=session");
+    }
+  }
+);
 
 export default router;
