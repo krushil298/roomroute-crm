@@ -83,14 +83,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     name: 'connect.sid',
   }));
 
-  // Initialize Passport for Google OAuth only if configured
-  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-    const { default: passport, initializeGoogleAuth } = await import("./googleAuth");
-    app.use(passport.initialize());
-    initializeGoogleAuth();
-    console.log("✅ Google OAuth enabled");
-  }
-
   // Mount auth routes
   app.use("/api/auth", authRoutes);
 

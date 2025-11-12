@@ -379,45 +379,4 @@ router.post("/reset-password", async (req, res) => {
   }
 });
 
-// Google OAuth routes - only register if configured
-if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-  // Dynamically import passport only when Google OAuth is configured
-  import("./googleAuth").then(({ default: passport }) => {
-    // GET /api/auth/google - Initiate Google OAuth
-    router.get("/google", passport.authenticate("google", {
-      scope: ["profile", "email"]
-    }));
-
-    // GET /api/auth/google/callback - Google OAuth callback
-    router.get("/google/callback",
-      passport.authenticate("google", { session: false, failureRedirect: "/login?error=auth_failed" }),
-      async (req, res) => {
-        try {
-          // Set session for the authenticated user
-          setUserSession(req, req.user as any);
-
-          // Explicitly save session
-          await new Promise<void>((resolve, reject) => {
-            req.session.save((err) => {
-              if (err) {
-                console.error("[Google OAuth] Session save error:", err);
-                reject(err);
-              } else {
-                console.log("[Google OAuth] Session saved successfully");
-                resolve();
-              }
-            });
-          });
-
-          // Redirect to dashboard
-          res.redirect("/");
-        } catch (error) {
-          console.error("[Google OAuth] Callback error:", error);
-          res.redirect("/login?error=session");
-        }
-      }
-    );
-  });
-}
-
 export default router;

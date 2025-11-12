@@ -27,7 +27,6 @@ export const users = pgTable("users", {
   role: text("role").notNull().default("user"), // Global role: user, admin, super_admin
   currentOrganizationId: varchar("current_organization_id"), // For users in multiple orgs
   authProvider: text("auth_provider").default("email"), // email, google, apple
-  googleId: varchar("google_id"), // Google OAuth user ID
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
