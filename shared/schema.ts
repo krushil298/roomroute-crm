@@ -158,8 +158,6 @@ export const contacts = pgTable("contacts", {
   estRoomNights: integer("est_room_nights"),
   potentialValue: decimal("potential_value", { precision: 10, scale: 2 }),
   avatarUrl: text("avatar_url"),
-  createdBy: varchar("created_by").references(() => users.id, { onDelete: "set null" }),
-  updatedBy: varchar("updated_by").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -207,8 +205,6 @@ export const deals = pgTable("deals", {
   expectedCloseDate: timestamp("expected_close_date"),
   actionDate: timestamp("action_date"),
   contractUrl: text("contract_url"),
-  createdBy: varchar("created_by").references(() => users.id, { onDelete: "set null" }),
-  updatedBy: varchar("updated_by").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -258,7 +254,6 @@ export const activities = pgTable("activities", {
   dealId: varchar("deal_id").references(() => deals.id),
   type: text("type").notNull(),
   description: text("description"),
-  createdBy: varchar("created_by").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
