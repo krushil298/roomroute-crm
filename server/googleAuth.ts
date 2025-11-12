@@ -104,19 +104,4 @@ export function initializeGoogleAuth() {
   return true;
 }
 
-// Serialize user for session
-passport.serializeUser((user: any, done) => {
-  done(null, user.id);
-});
-
-// Deserialize user from session
-passport.deserializeUser(async (id: string, done) => {
-  try {
-    const user = await storage.getUser(id);
-    done(null, user);
-  } catch (error) {
-    done(error, null);
-  }
-});
-
 export default passport;

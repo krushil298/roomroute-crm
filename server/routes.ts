@@ -86,7 +86,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Initialize Passport (must be after session setup)
   app.use(passport.initialize());
-  app.use(passport.session());
 
   // Initialize Google OAuth strategy if configured
   initializeGoogleAuth();
