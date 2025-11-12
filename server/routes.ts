@@ -802,10 +802,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate request body (organizationId already omitted from insertContactSchema)
       const validated = insertContactSchema.parse(req.body);
       
-      // Add server-side organizationId (security: prevent client from setting orgId)
+      // Add server-side organizationId and createdBy (security: prevent client from setting these)
       const contact = await storage.createContact({
         ...validated,
         organizationId: orgId,
+        createdBy: user.id,
       });
       res.status(201).json(contact);
     } catch (error) {
@@ -823,7 +824,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       // Validate partial updates (organizationId already omitted from insertContactSchema)
       const validated = insertContactSchema.partial().parse(req.body);
-      const contact = await storage.updateContact(req.params.id, orgId, validated);
+      const contact = await storage.updateContact(req.params.id, orgId, {
+        ...validated,
+        updatedBy: user.id,
+      });
       if (!contact) {
         return res.status(404).json({ error: "Contact not found" });
       }
@@ -949,18 +953,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const dealData = {
         ...validated,
         organizationId: orgId,
-        expectedCloseDate: validated.expectedCloseDate 
-          ? (typeof validated.expectedCloseDate === 'string' 
-              ? new Date(validated.expectedCloseDate) 
+        createdBy: user.id,
+        expectedCloseDate: validated.expectedCloseDate
+          ? (typeof validated.expectedCloseDate === 'string'
+              ? new Date(validated.expectedCloseDate)
               : validated.expectedCloseDate)
           : null,
-        actionDate: validated.actionDate 
-          ? (typeof validated.actionDate === 'string' 
-              ? new Date(validated.actionDate) 
+        actionDate: validated.actionDate
+          ? (typeof validated.actionDate === 'string'
+              ? new Date(validated.actionDate)
               : validated.actionDate)
           : null,
       };
-      
+
       const deal = await storage.createDeal(dealData);
       res.status(201).json(deal);
     } catch (error) {
@@ -979,22 +984,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Convert expectedCloseDate and actionDate strings to Date if present
       const updateData = {
         ...req.body,
+        updatedBy: user.id,
         expectedCloseDate: req.body.expectedCloseDate !== undefined
-          ? (req.body.expectedCloseDate === null 
-              ? null 
-              : (typeof req.body.expectedCloseDate === 'string' 
-                  ? new Date(req.body.expectedCloseDate) 
+          ? (req.body.expectedCloseDate === null
+              ? null
+              : (typeof req.body.expectedCloseDate === 'string'
+                  ? new Date(req.body.expectedCloseDate)
                   : req.body.expectedCloseDate))
           : undefined,
         actionDate: req.body.actionDate !== undefined
-          ? (req.body.actionDate === null 
-              ? null 
-              : (typeof req.body.actionDate === 'string' 
-                  ? new Date(req.body.actionDate) 
+          ? (req.body.actionDate === null
+              ? null
+              : (typeof req.body.actionDate === 'string'
+                  ? new Date(req.body.actionDate)
                   : req.body.actionDate))
           : undefined,
       };
-      
+
       const deal = await storage.updateDeal(req.params.id, orgId, updateData);
       if (!deal) {
         return res.status(404).json({ error: "Deal not found" });
@@ -1073,6 +1079,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const activity = await storage.createActivity({
         ...validated,
         organizationId: orgId,
+        createdBy: user.id,
       } as InsertActivity);
       res.status(201).json(activity);
     } catch (error) {
@@ -1137,6 +1144,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const template = await storage.createContractTemplate({
         ...validated,
         organizationId: orgId,
+        createdBy: user.id,
       });
       res.status(201).json(template);
     } catch (error) {
@@ -1151,7 +1159,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!orgId) {
         return res.status(403).json({ error: "No organization" });
       }
-      const template = await storage.updateContractTemplate(req.params.id, orgId, req.body);
+      const template = await storage.updateContractTemplate(req.params.id, orgId, {
+        ...req.body,
+        updatedBy: user.id,
+      });
       if (!template) {
         return res.status(404).json({ error: "Template not found" });
       }
@@ -1218,6 +1229,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const template = await storage.createEmailTemplate({
         ...validated,
         organizationId: orgId,
+        createdBy: user.id,
       });
       res.status(201).json(template);
     } catch (error) {
@@ -1232,7 +1244,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!orgId) {
         return res.status(403).json({ error: "No organization" });
       }
-      const template = await storage.updateEmailTemplate(req.params.id, orgId, req.body);
+      const template = await storage.updateEmailTemplate(req.params.id, orgId, {
+        ...req.body,
+        updatedBy: user.id,
+      });
       if (!template) {
         return res.status(404).json({ error: "Template not found" });
       }
