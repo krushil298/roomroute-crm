@@ -30,8 +30,6 @@ import ResetPassword from "@/pages/reset-password";
 import Onboarding from "@/pages/onboarding";
 import SwitchUser from "@/pages/switch-user";
 import NotFound from "@/pages/not-found";
-import { Button } from "@/components/ui/button";
-import { LogOut } from "lucide-react";
 import logoUrl from "@assets/image_1762307821152.png";
 
 function AuthenticatedRouter() {
@@ -143,21 +141,6 @@ function Router() {
                 className="h-6 w-auto md:h-8"
                 data-testid="img-header-logo"
               />
-              <div className="flex items-center gap-2">
-                <span className="hidden sm:inline text-sm text-muted-foreground" data-testid="text-user-name">
-                  {user?.firstName || user?.email || "User"}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleLogout}
-                  data-testid="button-logout"
-                  className="flex items-center gap-1"
-                >
-                  <LogOut className="h-4 w-4" />
-                  <span className="hidden md:inline text-sm">Logout</span>
-                </Button>
-              </div>
               <ThemeToggle />
             </div>
           </header>
