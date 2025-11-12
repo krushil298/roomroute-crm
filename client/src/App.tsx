@@ -136,15 +136,15 @@ function Router() {
               <SidebarTrigger data-testid="button-sidebar-toggle" />
               <OrganizationSwitcher />
             </div>
-            <div className="flex items-center gap-4">
-              <img 
-                src={logoUrl} 
-                alt="RoomRoute Logo" 
-                className="h-8 w-auto"
+            <div className="flex items-center gap-2 md:gap-4">
+              <img
+                src={logoUrl}
+                alt="RoomRoute Logo"
+                className="h-6 w-auto md:h-8"
                 data-testid="img-header-logo"
               />
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground" data-testid="text-user-name">
+                <span className="hidden sm:inline text-sm text-muted-foreground" data-testid="text-user-name">
                   {user?.firstName || user?.email || "User"}
                 </span>
                 <Button
@@ -152,8 +152,10 @@ function Router() {
                   size="sm"
                   onClick={handleLogout}
                   data-testid="button-logout"
+                  className="flex items-center gap-1"
                 >
                   <LogOut className="h-4 w-4" />
+                  <span className="hidden md:inline text-sm">Logout</span>
                 </Button>
               </div>
               <ThemeToggle />
