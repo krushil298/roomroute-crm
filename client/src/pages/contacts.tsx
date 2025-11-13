@@ -40,6 +40,7 @@ import { z } from "zod";
 const clientContactSchema = z.object({
   leadOrProject: z.string().min(1, "Lead or project name is required"),
   company: z.string().nullable(),
+  companyWebsite: z.string().url().nullable().or(z.literal("")),
   segment: z.string().min(1, "Segment is required"),
   primaryContact: z.string().nullable(),
   email: z.string().email().nullable().or(z.literal("")),
@@ -81,6 +82,7 @@ export default function Contacts() {
     defaultValues: {
       leadOrProject: "",
       company: null,
+      companyWebsite: null,
       segment: "",
       primaryContact: null,
       email: null,
@@ -169,6 +171,7 @@ export default function Contacts() {
     form.reset({
       leadOrProject: contact.leadOrProject,
       company: contact.company,
+      companyWebsite: contact.companyWebsite,
       segment: contact.segment,
       primaryContact: contact.primaryContact,
       email: contact.email,
@@ -392,6 +395,28 @@ export default function Contacts() {
                         value={field.value || ""}
                         onChange={(e) => field.onChange(e.target.value || null)}
                         data-testid="input-contact-company"
+                        disabled={selectedContact !== null && !isEditMode}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="companyWebsite"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Company Website</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="url"
+                        placeholder="https://example.com"
+                        {...field}
+                        value={field.value || ""}
+                        onChange={(e) => field.onChange(e.target.value || null)}
+                        data-testid="input-company-website"
                         disabled={selectedContact !== null && !isEditMode}
                       />
                     </FormControl>

@@ -147,6 +147,7 @@ export const contacts = pgTable("contacts", {
   organizationId: varchar("organization_id").notNull().references(() => organizations.id),
   leadOrProject: text("lead_or_project").notNull(),
   company: text("company"),
+  companyWebsite: text("company_website"),
   companyAddress: text("company_address"),
   companyCity: text("company_city"),
   companyState: text("company_state"),
