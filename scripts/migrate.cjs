@@ -1,5 +1,6 @@
 // CommonJS migration script that works in production
 const { Pool } = require('@neondatabase/serverless');
+const ws = require('ws');
 const fs = require('fs');
 const path = require('path');
 
@@ -9,7 +10,11 @@ async function runMigrations() {
     process.exit(1);
   }
 
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  // Configure WebSocket for Neon serverless
+  const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    webSocketConstructor: ws
+  });
 
   try {
     // In production (dist/), migrations are in dist/migrations
