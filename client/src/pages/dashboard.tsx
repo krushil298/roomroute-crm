@@ -346,6 +346,25 @@ export default function Dashboard() {
         </div>
       </div>
 
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold">Pipeline Overview</h2>
+          <Button variant="outline" size="sm" onClick={() => setLocation("/pipeline")}>
+            View Full Pipeline
+          </Button>
+        </div>
+        <div className="flex gap-4 overflow-x-auto pb-4">
+          {pipelineData.map((stage) => (
+            <PipelineStage
+              key={stage.stage}
+              {...stage}
+              onDealClick={stage.stage !== "Leads" ? handleDealClick : undefined}
+              onDeleteDeal={stage.stage !== "Leads" ? handleDeleteDeal : undefined}
+            />
+          ))}
+        </div>
+      </div>
+
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
