@@ -47,6 +47,7 @@ router.post("/signup", async (req, res) => {
       password: hashedPassword,
       authProvider: "email",
       role: pendingInvite ? pendingInvite.role : "user",
+      organizationId: pendingInvite ? pendingInvite.organizationId : undefined,
       currentOrganizationId: pendingInvite ? pendingInvite.organizationId : undefined,
     });
 
@@ -61,6 +62,8 @@ router.post("/signup", async (req, res) => {
 
       // Mark invitation as accepted
       await storage.updateInvitationStatus(pendingInvite.id, "accepted", new Date());
+
+      console.log(`[SIGNUP] User ${user.email} auto-assigned to organization ${pendingInvite.organizationId}`);
     }
 
     // Set session
