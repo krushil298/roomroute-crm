@@ -158,6 +158,7 @@ export const contacts = pgTable("contacts", {
   estRoomNights: integer("est_room_nights"),
   potentialValue: decimal("potential_value", { precision: 10, scale: 2 }),
   avatarUrl: text("avatar_url"),
+  archived: boolean("archived").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
