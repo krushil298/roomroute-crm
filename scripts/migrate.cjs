@@ -1,6 +1,5 @@
 // CommonJS migration script that works in production
-const { Pool } = require('@neondatabase/serverless');
-const ws = require('ws');
+const { Pool } = require('pg');
 const fs = require('fs');
 const path = require('path');
 
@@ -10,10 +9,9 @@ async function runMigrations() {
     process.exit(1);
   }
 
-  // Configure WebSocket for Neon serverless
+  // Use regular pg Pool for migrations
   const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    webSocketConstructor: ws
+    connectionString: process.env.DATABASE_URL
   });
 
   try {
