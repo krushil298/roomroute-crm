@@ -275,8 +275,6 @@ export const contractTemplates = pgTable("contract_templates", {
   type: text("type").notNull(),
   description: text("description").notNull(),
   content: text("content").notNull(),
-  createdBy: varchar("created_by").references(() => users.id, { onDelete: "set null" }),
-  updatedBy: varchar("updated_by").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -296,8 +294,6 @@ export const emailTemplates = pgTable("email_templates", {
   name: text("name").notNull(),
   subject: text("subject").notNull(),
   body: text("body").notNull(),
-  createdBy: varchar("created_by").references(() => users.id, { onDelete: "set null" }),
-  updatedBy: varchar("updated_by").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
