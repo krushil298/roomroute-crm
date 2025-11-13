@@ -162,20 +162,59 @@ export default function Pipeline() {
     { stage: "closed", displayName: "Closed", color: "green" },
   ];
 
-  const pipelineData = stageConfig.map(({ stage, displayName, color }) => ({
-    stage: displayName,
-    deals: deals
-      .filter(deal => deal.stage.toLowerCase() === stage.toLowerCase())
-      .map(deal => ({
-        id: deal.id,
-        title: deal.title,
-        value: Number(deal.value),
-        contact: contacts.find(c => c.id === deal.contactId)?.leadOrProject || "No contact",
-      })),
-    color,
-  }));
+  const pipelineData = stageConfig.map(({ stage, displayName, color }) => {
+    let stageDeals;
 
-  const totalValue = deals.reduce((sum, deal) => sum + Number(deal.value), 0);
+    if (stage === "lead") {
+      // For "New" stage, show contacts with potential value as leads
+      const contactLeads = contacts
+        .filter(c => Number(c.potentialValue || 0) > 0)
+        .map(contact => ({
+          id: contact.id,
+          title: contact.leadOrProject,
+          value: Number(contact.potentialValue || 0),
+          contact: contact.leadOrProject,
+          isContact: true,
+        }));
+
+      // Also include any deals in "lead" stage
+      const leadDeals = deals
+        .filter(deal => deal.stage.toLowerCase() === "lead")
+        .map(deal => ({
+          id: deal.id,
+          title: deal.title,
+          value: Number(deal.value),
+          contact: contacts.find(c => c.id === deal.contactId)?.leadOrProject || "No contact",
+          isContact: false,
+        }));
+
+      stageDeals = [...contactLeads, ...leadDeals];
+    } else {
+      // For other stages, show only deals
+      stageDeals = deals
+        .filter(deal => deal.stage.toLowerCase() === stage.toLowerCase())
+        .map(deal => ({
+          id: deal.id,
+          title: deal.title,
+          value: Number(deal.value),
+          contact: contacts.find(c => c.id === deal.contactId)?.leadOrProject || "No contact",
+          isContact: false,
+        }));
+    }
+
+    return {
+      stage: displayName,
+      deals: stageDeals,
+      color,
+    };
+  });
+
+  // Calculate total value including both deals and contact potential values
+  const dealsValue = deals.reduce((sum, deal) => sum + Number(deal.value), 0);
+  const contactsValue = contacts
+    .filter(c => Number(c.potentialValue || 0) > 0)
+    .reduce((sum, contact) => sum + Number(contact.potentialValue || 0), 0);
+  const totalValue = dealsValue + contactsValue;
 
   return (
     <div className="p-6 space-y-6">
