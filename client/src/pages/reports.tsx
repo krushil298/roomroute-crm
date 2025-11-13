@@ -54,6 +54,7 @@ export default function Reports() {
       closedDeals: filteredDeals.filter(d => d.stage === "closed").length,
       activities: filteredActivities.map(a => ({
         date: format(new Date(a.createdAt), "MMM dd, yyyy"),
+        time: format(new Date(a.createdAt), "hh:mm a"),
         type: a.type,
         description: a.description,
         contact: contacts.find(c => c.id === a.contactId)?.leadOrProject || "Unknown",
@@ -75,6 +76,7 @@ export default function Reports() {
         potentialValue: Number(c.potentialValue || 0),
         estRoomNights: c.estRoomNights || 0,
         dateAdded: format(new Date(c.createdAt), "MMM dd, yyyy"),
+        timeAdded: format(new Date(c.createdAt), "hh:mm a"),
       }))
     };
   };
@@ -94,6 +96,7 @@ export default function Reports() {
         stage: d.stage,
         contact: contacts.find(c => c.id === d.contactId)?.leadOrProject || "Unknown",
         dateClosed: format(new Date(d.createdAt), "MMM dd, yyyy"),
+        timeClosed: format(new Date(d.createdAt), "hh:mm a"),
       }))
     };
   };
