@@ -160,6 +160,7 @@ export const contacts = pgTable("contacts", {
   potentialValue: decimal("potential_value", { precision: 10, scale: 2 }),
   avatarUrl: text("avatar_url"),
   archived: boolean("archived").default(false).notNull(),
+  archiveReason: text("archive_reason"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

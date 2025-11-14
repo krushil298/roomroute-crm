@@ -60,12 +60,16 @@ const BUSINESS_SEGMENTS = [
   "Other"
 ] as const;
 
+const ARCHIVE_REASONS = ["Dead Lead", "Duplicate", "Entered in Error"] as const;
+
 export default function Contacts() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+  const [archiveReason, setArchiveReason] = useState<string>("");
   const contactsPerPage = 10;
   const { toast } = useToast();
 
@@ -141,6 +145,35 @@ export default function Contacts() {
     },
   });
 
+  const archiveContactMutation = useMutation({
+    mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
+      const response = await apiRequest("PATCH", `/api/contacts/${id}`, {
+        archived: true,
+        archiveReason: reason,
+      });
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+      toast({
+        title: "Success",
+        description: "Lead archived successfully",
+      });
+      setSelectedContact(null);
+      setIsEditMode(false);
+      setShowArchiveConfirm(false);
+      setArchiveReason("");
+      form.reset();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to archive lead",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSubmit = (data: ClientContact) => {
     if (isEditMode && selectedContact) {
       updateContactMutation.mutate({ id: selectedContact.id, data });
@@ -203,6 +236,8 @@ export default function Contacts() {
     setIsDialogOpen(false);
     setSelectedContact(null);
     setIsEditMode(false);
+    setShowArchiveConfirm(false);
+    setArchiveReason("");
     form.reset();
   };
 
@@ -552,6 +587,77 @@ export default function Contacts() {
                 </Card>
               )}
 
+              {/* Archive Section */}
+              {selectedContact && isEditMode && !showArchiveConfirm && (
+                <div className="border-t pt-4 mt-6">
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={() => setShowArchiveConfirm(true)}
+                    data-testid="button-show-archive"
+                  >
+                    Archive Lead
+                  </Button>
+                </div>
+              )}
+
+              {/* Archive Confirmation */}
+              {selectedContact && showArchiveConfirm && (
+                <div className="border-t pt-4 mt-6 space-y-3">
+                  <h3 className="font-medium">Archive Lead</h3>
+                  <div className="space-y-2">
+                    <Label htmlFor="archive-reason">Reason for archiving *</Label>
+                    <Select value={archiveReason} onValueChange={setArchiveReason}>
+                      <SelectTrigger id="archive-reason" data-testid="select-archive-reason">
+                        <SelectValue placeholder="Select a reason" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ARCHIVE_REASONS.map((reason) => (
+                          <SelectItem key={reason} value={reason}>
+                            {reason}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setShowArchiveConfirm(false);
+                        setArchiveReason("");
+                      }}
+                      data-testid="button-cancel-archive"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={() => {
+                        if (!archiveReason) {
+                          toast({
+                            title: "Error",
+                            description: "Please select a reason for archiving",
+                            variant: "destructive",
+                          });
+                          return;
+                        }
+                        archiveContactMutation.mutate({
+                          id: selectedContact.id,
+                          reason: archiveReason
+                        });
+                      }}
+                      disabled={archiveContactMutation.isPending || !archiveReason}
+                      data-testid="button-confirm-archive"
+                    >
+                      {archiveContactMutation.isPending ? "Archiving..." : "Confirm Archive"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-end gap-3">
                 {selectedContact && !isEditMode && (
                   <Button
@@ -572,14 +678,14 @@ export default function Contacts() {
                 >
                   {selectedContact && !isEditMode ? "Close" : "Cancel"}
                 </Button>
-                {(!selectedContact || isEditMode) && (
+                {(!selectedContact || isEditMode) && !showArchiveConfirm && (
                   <Button
                     type="submit"
                     disabled={createContactMutation.isPending || updateContactMutation.isPending}
                     data-testid="button-submit-contact"
                   >
-                    {createContactMutation.isPending || updateContactMutation.isPending 
-                      ? (isEditMode ? "Updating..." : "Creating...") 
+                    {createContactMutation.isPending || updateContactMutation.isPending
+                      ? (isEditMode ? "Updating..." : "Creating...")
                       : (isEditMode ? "Update Lead" : "Create Lead")
                     }
                   </Button>

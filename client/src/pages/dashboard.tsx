@@ -313,6 +313,11 @@ export default function Dashboard() {
       deals: dealsByStage("negotiation"),
       color: "green",
     },
+    {
+      stage: "Closed",
+      deals: dealsByStage("closed"),
+      color: "gray",
+    },
   ];
 
   return (
