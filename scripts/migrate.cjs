@@ -10,8 +10,12 @@ async function runMigrations() {
   }
 
   // Use regular pg Pool for migrations
+  // Enable SSL for production databases (Railway, Neon, etc.)
   const pool = new Pool({
-    connectionString: process.env.DATABASE_URL
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.DATABASE_URL?.includes('localhost')
+      ? false
+      : { rejectUnauthorized: false }
   });
 
   try {

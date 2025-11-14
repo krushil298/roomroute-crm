@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
-import type { Contact, Deal, Activity } from "@shared/schema";
+import type { Contact, Deal, Activity, User } from "@shared/schema";
 import { FileDown, FileSpreadsheet, FileText } from "lucide-react";
 import { format, isWithinInterval, parseISO, differenceInDays } from "date-fns";
 import * as XLSX from "xlsx";
@@ -31,6 +31,10 @@ export default function Reports() {
     queryKey: ["/api/activities"],
   });
 
+  const { data: teamMembers = [] } = useQuery<User[]>({
+    queryKey: ["/api/team"],
+  });
+
   const filterByDateRange = <T extends { createdAt: string | Date }>(items: T[]) => {
     if (!startDate || !endDate) return items;
     
@@ -52,13 +56,21 @@ export default function Reports() {
       totalActivities: filteredActivities.length,
       newLeads: filteredContacts.length,
       closedDeals: filteredDeals.filter(d => d.stage === "closed").length,
-      activities: filteredActivities.map(a => ({
-        date: format(new Date(a.createdAt), "MMM dd, yyyy"),
-        time: format(new Date(a.createdAt), "hh:mm a"),
-        type: a.type,
-        description: a.description,
-        contact: contacts.find(c => c.id === a.contactId)?.leadOrProject || "Unknown",
-      }))
+      activities: filteredActivities.map(a => {
+        const user = teamMembers.find(u => u.id === a.createdBy);
+        const userName = user
+          ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'Unknown'
+          : 'Unknown';
+
+        return {
+          date: format(new Date(a.createdAt), "MMM dd, yyyy"),
+          time: format(new Date(a.createdAt), "hh:mm a"),
+          type: a.type,
+          description: a.description,
+          contact: contacts.find(c => c.id === a.contactId)?.leadOrProject || "Unknown",
+          createdBy: userName,
+        };
+      })
     };
   };
 

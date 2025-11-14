@@ -256,18 +256,31 @@ export const activities = pgTable("activities", {
   dealId: varchar("deal_id").references(() => deals.id),
   type: text("type").notNull(),
   description: text("description"),
+  createdBy: varchar("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Client schema - used by frontend (organizationId and createdBy omitted for security)
 export const insertActivitySchema = createInsertSchema(activities).omit({
   id: true,
   createdAt: true,
   organizationId: true,
+  createdBy: true,
 }).extend({
   description: z.string().optional(),
 });
 
-export type InsertActivity = z.infer<typeof insertActivitySchema>;
+// Server schema - includes organizationId and createdBy for database insertion
+const insertActivitySchemaWithOrgAndUser = createInsertSchema(activities).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  description: z.string().optional(),
+  createdBy: z.string().optional(),
+});
+
+export type InsertActivity = z.infer<typeof insertActivitySchemaWithOrgAndUser>;
+export type ClientInsertActivity = z.infer<typeof insertActivitySchema>;
 export type Activity = typeof activities.$inferSelect;
 
 export const contractTemplates = pgTable("contract_templates", {
