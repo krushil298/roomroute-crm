@@ -58,9 +58,9 @@ function getSenderName(user: any): string {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Setup session
-  const sessionTtlMs = 7 * 24 * 60 * 60 * 1000; // 1 week in milliseconds
-  const sessionTtlSeconds = 7 * 24 * 60 * 60; // 1 week in seconds
+  // Setup session - 2 hours for shared hotel computers
+  const sessionTtlMs = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+  const sessionTtlSeconds = 2 * 60 * 60; // 2 hours in seconds
   const pgStore = connectPg(session);
   const sessionStore = new pgStore({
     conString: process.env.DATABASE_URL!,
