@@ -38,8 +38,8 @@ router.post("/signup", async (req, res) => {
     const pendingInvitations = await storage.getInvitationsByEmail(data.email);
     const pendingInvite = pendingInvitations.find(inv => inv.status === "pending");
 
-    // Create user
-    const user = await storage.upsertUser({
+    // Create user - we need organization info for the user record
+    let user = await storage.upsertUser({
       email: data.email,
       firstName: data.firstName,
       lastName: data.lastName,
@@ -53,6 +53,9 @@ router.post("/signup", async (req, res) => {
 
     // If there's a pending invitation, auto-accept it and add user to organization
     if (pendingInvite) {
+      console.log(`[SIGNUP] Processing invitation for ${user.email} to organization ${pendingInvite.organizationId}`);
+
+      // Add user to organization via userOrganizations junction table
       await storage.addUserToOrganization({
         userId: user.id,
         organizationId: pendingInvite.organizationId,
@@ -64,6 +67,9 @@ router.post("/signup", async (req, res) => {
       await storage.updateInvitationStatus(pendingInvite.id, "accepted", new Date());
 
       console.log(`[SIGNUP] User ${user.email} auto-assigned to organization ${pendingInvite.organizationId}`);
+
+      // Reload user to ensure session has latest data
+      user = await storage.getUser(user.id) || user;
     }
 
     // Set session
@@ -129,6 +135,8 @@ router.post("/login", async (req, res) => {
     const pendingInvite = pendingInvitations.find(inv => inv.status === "pending");
 
     if (pendingInvite) {
+      console.log(`[LOGIN] Processing invitation for ${user.email} to organization ${pendingInvite.organizationId}`);
+
       // Check if user is not already in this organization
       const userOrgs = await storage.getUserOrganizations(user.id);
       const alreadyMember = userOrgs.some(org => org.organizationId === pendingInvite.organizationId);
@@ -142,14 +150,27 @@ router.post("/login", async (req, res) => {
           active: true,
         });
 
-        // Update user's current organization if not set
-        if (!user.currentOrganizationId) {
+        // Update user's organization fields if not set
+        if (!user.organizationId) {
+          await storage.upsertUser({
+            id: user.id,
+            email: user.email,
+            organizationId: pendingInvite.organizationId,
+            currentOrganizationId: pendingInvite.organizationId,
+          });
+          user.organizationId = pendingInvite.organizationId;
+          user.currentOrganizationId = pendingInvite.organizationId;
+        } else if (!user.currentOrganizationId) {
           await storage.updateUserCurrentOrg(user.id, pendingInvite.organizationId);
           user.currentOrganizationId = pendingInvite.organizationId;
         }
 
         // Mark invitation as accepted
         await storage.updateInvitationStatus(pendingInvite.id, "accepted", new Date());
+
+        console.log(`[LOGIN] User ${user.email} auto-assigned to organization ${pendingInvite.organizationId}`);
+      } else {
+        console.log(`[LOGIN] User ${user.email} already member of organization ${pendingInvite.organizationId}`);
       }
     }
 
