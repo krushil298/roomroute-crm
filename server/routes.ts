@@ -67,7 +67,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     createTableIfMissing: false,
     ttl: sessionTtlSeconds, // TTL must be in seconds, not milliseconds
     tableName: "sessions",
-    disableTouch: true, // Prevent session TTL from being extended on every request
+    // disableTouch is NOT set (defaults to false) - session TTL extends on each request
   });
 
   app.use(session({
@@ -75,12 +75,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
-    rolling: false, // Do NOT reset cookie maxAge on every request - only extend on session modification
+    rolling: true, // Reset cookie maxAge on every request - implements inactivity timeout
     cookie: {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: process.env.NODE_ENV === "production" ? 'lax' : 'lax',
-      maxAge: sessionTtlMs, // maxAge is in milliseconds
+      maxAge: sessionTtlMs, // 2 hours from last activity
     },
     name: 'connect.sid',
   }));
