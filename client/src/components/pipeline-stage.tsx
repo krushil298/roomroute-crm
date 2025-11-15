@@ -29,30 +29,30 @@ export function PipelineStage({ stage, deals, color, onDealClick, onDeleteDeal }
   const totalValue = deals.reduce((sum, deal) => sum + deal.value, 0);
 
   return (
-    <Card className="flex-shrink-0 w-60 p-4">
-      <div className="flex items-center justify-between gap-2 mb-3">
-        <h3 className="font-semibold">{stage}</h3>
+    <Card className="flex-shrink-0 w-52 p-3">
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <h3 className="font-semibold text-sm">{stage}</h3>
         <Badge variant="secondary" className="text-xs">
           {deals.length}
         </Badge>
       </div>
-      <div className="flex items-center gap-1 text-lg font-bold text-primary mb-4">
-        <DollarSign className="h-5 w-5" />
+      <div className="flex items-center gap-1 text-base font-bold text-primary mb-3">
+        <DollarSign className="h-4 w-4" />
         <span className="tabular-nums">
-          {totalValue >= 1000 
-            ? `${(totalValue / 1000).toFixed(0)}K` 
+          {totalValue >= 1000
+            ? `${(totalValue / 1000).toFixed(0)}K`
             : totalValue.toLocaleString()}
         </span>
       </div>
-      
-      <div className="space-y-2 max-h-96 overflow-y-auto">
+
+      <div className="space-y-2 max-h-64 overflow-y-auto">
         {deals.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-4">No deals</p>
+          <p className="text-xs text-muted-foreground text-center py-3">No deals</p>
         ) : (
           deals.map((deal) => (
-            <Card 
+            <Card
               key={deal.id}
-              className="p-3 hover-elevate active-elevate-2 transition-all relative group"
+              className="p-2 hover-elevate active-elevate-2 transition-all relative group"
               data-testid={`card-deal-${deal.id}`}
             >
               <div className="space-y-1" onClick={() => onDealClick?.(deal.id)} style={{ cursor: onDealClick ? 'pointer' : 'default' }}>
