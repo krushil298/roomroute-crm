@@ -40,10 +40,18 @@ import { z } from "zod";
 const clientContactSchema = z.object({
   leadOrProject: z.string().min(1, "Lead or project name is required"),
   company: z.string().nullable(),
-  companyWebsite: z.string().url().nullable().or(z.literal("")),
+  companyWebsite: z.union([
+    z.string().url("Must be a valid URL"),
+    z.literal(""),
+    z.null()
+  ]).optional(),
   segment: z.string().min(1, "Segment is required"),
   primaryContact: z.string().nullable(),
-  email: z.string().email().nullable().or(z.literal("")),
+  email: z.union([
+    z.string().email("Must be a valid email"),
+    z.literal(""),
+    z.null()
+  ]).optional(),
   phone: z.string().nullable(),
   estRoomNights: z.number().int().positive().nullable(),
   potentialValue: z.number().positive().nullable(),

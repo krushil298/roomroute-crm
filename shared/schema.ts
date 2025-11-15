@@ -173,6 +173,16 @@ export const insertContactSchema = createInsertSchema(contacts)
     organizationId: true,
   })
   .extend({
+    companyWebsite: z.union([
+      z.string().url("Must be a valid URL"),
+      z.literal(""),
+      z.null()
+    ]).optional().transform(val => val === "" ? null : val),
+    email: z.union([
+      z.string().email("Must be a valid email"),
+      z.literal(""),
+      z.null()
+    ]).optional().transform(val => val === "" ? null : val),
     potentialValue: z.coerce.string().nullable().optional().transform(val => {
       if (!val || val === "" || val === "null" || val === "undefined") return null;
       const num = Number(val);
@@ -187,6 +197,16 @@ const insertContactSchemaWithOrg = createInsertSchema(contacts)
     createdAt: true,
   })
   .extend({
+    companyWebsite: z.union([
+      z.string().url("Must be a valid URL"),
+      z.literal(""),
+      z.null()
+    ]).optional().transform(val => val === "" ? null : val),
+    email: z.union([
+      z.string().email("Must be a valid email"),
+      z.literal(""),
+      z.null()
+    ]).optional().transform(val => val === "" ? null : val),
     potentialValue: z.coerce.string().nullable().optional().transform(val => {
       if (!val || val === "" || val === "null" || val === "undefined") return null;
       const num = Number(val);
