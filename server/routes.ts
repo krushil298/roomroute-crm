@@ -854,6 +854,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/contacts/bulk-archive", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await getUserFromRequest(req);
+      const orgId = getEffectiveOrgId(user);
+      if (!orgId) {
+        return res.status(403).json({ error: "No organization" });
+      }
+
+      const { contactIds, archiveReason } = req.body;
+
+      if (!Array.isArray(contactIds) || contactIds.length === 0) {
+        return res.status(400).json({ error: "Contact IDs array is required" });
+      }
+
+      if (!archiveReason || typeof archiveReason !== 'string') {
+        return res.status(400).json({ error: "Archive reason is required" });
+      }
+
+      // Update all contacts in a transaction-like manner
+      const updatePromises = contactIds.map(contactId =>
+        storage.updateContact(contactId, orgId, {
+          archived: true,
+          archiveReason,
+          updatedBy: user.id,
+        })
+      );
+
+      const results = await Promise.all(updatePromises);
+
+      // Filter out any null results (contacts that weren't found or didn't belong to org)
+      const successCount = results.filter(r => r !== null).length;
+
+      res.json({
+        success: true,
+        archivedCount: successCount,
+        requestedCount: contactIds.length
+      });
+    } catch (error) {
+      console.error("Bulk archive error:", error);
+      res.status(500).json({ error: "Failed to archive contacts" });
+    }
+  });
+
   app.post("/api/contacts/import", isAuthenticated, async (req: any, res) => {
     try {
       const user = await getUserFromRequest(req);

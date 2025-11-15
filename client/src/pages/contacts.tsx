@@ -2,7 +2,8 @@ import { ContactCard } from "@/components/contact-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, Clock } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Plus, Search, Clock, Archive } from "lucide-react";
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import type { Contact, InsertContact, Activity } from "@shared/schema";
@@ -79,6 +80,9 @@ export default function Contacts() {
   const [currentPage, setCurrentPage] = useState(1);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [archiveReason, setArchiveReason] = useState<string>("");
+  const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set());
+  const [showBulkArchiveDialog, setShowBulkArchiveDialog] = useState(false);
+  const [bulkArchiveReason, setBulkArchiveReason] = useState<string>("");
   const contactsPerPage = 10;
   const { toast } = useToast();
 
@@ -183,6 +187,33 @@ export default function Contacts() {
     },
   });
 
+  const bulkArchiveContactsMutation = useMutation({
+    mutationFn: async ({ contactIds, reason }: { contactIds: string[]; reason: string }) => {
+      const response = await apiRequest("POST", "/api/contacts/bulk-archive", {
+        contactIds,
+        archiveReason: reason,
+      });
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+      toast({
+        title: "Success",
+        description: `${selectedContactIds.size} leads archived successfully`,
+      });
+      setSelectedContactIds(new Set());
+      setShowBulkArchiveDialog(false);
+      setBulkArchiveReason("");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to archive leads",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSubmit = (data: ClientContact) => {
     if (isEditMode && selectedContact) {
       updateContactMutation.mutate({ id: selectedContact.id, data });
@@ -250,6 +281,37 @@ export default function Contacts() {
     form.reset();
   };
 
+  // Bulk selection handlers
+  const toggleContactSelection = (contactId: string) => {
+    const newSelection = new Set(selectedContactIds);
+    if (newSelection.has(contactId)) {
+      newSelection.delete(contactId);
+    } else {
+      newSelection.add(contactId);
+    }
+    setSelectedContactIds(newSelection);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedContactIds.size === paginatedContacts.length) {
+      setSelectedContactIds(new Set());
+    } else {
+      setSelectedContactIds(new Set(paginatedContacts.map(c => c.id)));
+    }
+  };
+
+  const handleBulkArchive = () => {
+    if (selectedContactIds.size === 0) {
+      toast({
+        title: "Error",
+        description: "Please select at least one lead to archive",
+        variant: "destructive",
+      });
+      return;
+    }
+    setShowBulkArchiveDialog(true);
+  };
+
   // Filter and sort contacts alphabetically
   const filteredAndSortedContacts = contacts
     .filter((contact) => {
@@ -305,6 +367,35 @@ export default function Contacts() {
         />
       </div>
 
+      {/* Bulk Actions Bar */}
+      {!isLoading && filteredAndSortedContacts.length > 0 && (
+        <div className="flex items-center justify-between bg-muted/30 p-3 rounded-md">
+          <div className="flex items-center gap-3">
+            <Checkbox
+              checked={selectedContactIds.size === paginatedContacts.length && paginatedContacts.length > 0}
+              onCheckedChange={toggleSelectAll}
+              data-testid="checkbox-select-all"
+            />
+            <span className="text-sm text-muted-foreground">
+              {selectedContactIds.size === 0
+                ? "Select leads"
+                : `${selectedContactIds.size} selected`}
+            </span>
+          </div>
+          {selectedContactIds.size > 0 && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleBulkArchive}
+              data-testid="button-bulk-archive"
+            >
+              <Archive className="h-4 w-4 mr-2" />
+              Archive Selected ({selectedContactIds.size})
+            </Button>
+          )}
+        </div>
+      )}
+
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[...Array(6)].map((_, i) => (
@@ -327,6 +418,8 @@ export default function Contacts() {
                 avatarUrl={contact.avatarUrl ?? undefined}
                 onEdit={() => handleEditContact(contact)}
                 onViewDetails={() => handleViewContact(contact)}
+                isSelected={selectedContactIds.has(contact.id)}
+                onToggleSelect={toggleContactSelection}
               />
             ))}
           </div>
@@ -702,6 +795,71 @@ export default function Contacts() {
               </div>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Archive Dialog */}
+      <Dialog open={showBulkArchiveDialog} onOpenChange={setShowBulkArchiveDialog}>
+        <DialogContent data-testid="dialog-bulk-archive">
+          <DialogHeader>
+            <DialogTitle>Archive Multiple Leads</DialogTitle>
+            <DialogDescription>
+              You are about to archive {selectedContactIds.size} lead{selectedContactIds.size !== 1 ? 's' : ''}.
+              Please select a reason for archiving.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="bulk-archive-reason">Reason for archiving *</Label>
+              <Select value={bulkArchiveReason} onValueChange={setBulkArchiveReason}>
+                <SelectTrigger id="bulk-archive-reason" data-testid="select-bulk-archive-reason">
+                  <SelectValue placeholder="Select a reason" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ARCHIVE_REASONS.map((reason) => (
+                    <SelectItem key={reason} value={reason}>
+                      {reason}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowBulkArchiveDialog(false);
+                setBulkArchiveReason("");
+              }}
+              data-testid="button-cancel-bulk-archive"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => {
+                if (!bulkArchiveReason) {
+                  toast({
+                    title: "Error",
+                    description: "Please select a reason for archiving",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+                bulkArchiveContactsMutation.mutate({
+                  contactIds: Array.from(selectedContactIds),
+                  reason: bulkArchiveReason
+                });
+              }}
+              disabled={bulkArchiveContactsMutation.isPending || !bulkArchiveReason}
+              data-testid="button-confirm-bulk-archive"
+            >
+              {bulkArchiveContactsMutation.isPending ? "Archiving..." : `Archive ${selectedContactIds.size} Lead${selectedContactIds.size !== 1 ? 's' : ''}`}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Mail, Phone, Building2, User, Briefcase, Hotel, DollarSign } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
@@ -26,6 +27,8 @@ interface ContactCardProps {
   onEdit?: () => void;
   onViewDetails?: () => void;
   onDelete?: () => void;
+  isSelected?: boolean;
+  onToggleSelect?: (id: string) => void;
 }
 
 const segmentColors: Record<string, string> = {
@@ -55,6 +58,8 @@ export function ContactCard({
   onEdit,
   onViewDetails,
   onDelete,
+  isSelected = false,
+  onToggleSelect,
 }: ContactCardProps) {
   const [emailComposerOpen, setEmailComposerOpen] = useState(false);
   const [outreachDialogOpen, setOutreachDialogOpen] = useState(false);
@@ -96,6 +101,14 @@ export function ContactCard({
       <Card className="p-6 hover-elevate">
         <div className="flex items-start justify-between gap-4 mb-4">
           <div className="flex items-center gap-3 flex-1 min-w-0">
+            {onToggleSelect && (
+              <Checkbox
+                checked={isSelected}
+                onCheckedChange={() => onToggleSelect(id)}
+                onClick={(e) => e.stopPropagation()}
+                data-testid={`checkbox-contact-${id}`}
+              />
+            )}
             <Avatar className="h-12 w-12 shrink-0">
               <AvatarImage src={avatarUrl} alt={leadOrProject} />
               <AvatarFallback>{initials}</AvatarFallback>
