@@ -24,7 +24,7 @@ interface OutreachAttempt {
 
 const CONTACT_METHODS = ["Call", "Email", "Text", "In-Person", "LinkedIn", "Other"];
 const STATUS_OPTIONS = [
-  { value: "", label: "(No status change)" },
+  { value: "no-change", label: "(No status change)" },
   { value: "qualified", label: "Qualified" },
   { value: "proposal", label: "Proposal" },
   { value: "closed", label: "Closed" },
@@ -37,7 +37,7 @@ export function OutreachDialog({ open, onOpenChange, contact }: OutreachDialogPr
     { date: "", method: "", notes: "" },
   ]);
   const [additionalNotes, setAdditionalNotes] = useState("");
-  const [statusChange, setStatusChange] = useState("");
+  const [statusChange, setStatusChange] = useState("no-change");
 
   const mapMethodToActivityType = (method: string): string => {
     const methodMap: Record<string, string> = {
@@ -82,7 +82,7 @@ export function OutreachDialog({ open, onOpenChange, contact }: OutreachDialogPr
       }
 
       // If status change is selected, update the associated deal
-      if (statusChange) {
+      if (statusChange && statusChange !== "no-change") {
         // Get deals associated with this contact
         const dealsResponse = await apiRequest("GET", `/api/contacts/${contact.id}/deals`);
         const deals = await dealsResponse.json();
@@ -119,7 +119,7 @@ export function OutreachDialog({ open, onOpenChange, contact }: OutreachDialogPr
         { date: "", method: "", notes: "" },
       ]);
       setAdditionalNotes("");
-      setStatusChange("");
+      setStatusChange("no-change");
     },
     onError: (error: Error) => {
       toast({
