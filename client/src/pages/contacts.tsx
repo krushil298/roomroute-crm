@@ -83,6 +83,7 @@ export default function Contacts() {
   const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set());
   const [showBulkArchiveDialog, setShowBulkArchiveDialog] = useState(false);
   const [bulkArchiveReason, setBulkArchiveReason] = useState<string>("");
+  const [archiveFilter, setArchiveFilter] = useState<"active" | "archived" | "all">("active");
   const contactsPerPage = 10;
   const { toast } = useToast();
 
@@ -214,6 +215,30 @@ export default function Contacts() {
     },
   });
 
+  const restoreContactMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiRequest("PATCH", `/api/contacts/${id}`, {
+        archived: false,
+        archiveReason: null,
+      });
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+      toast({
+        title: "Success",
+        description: "Lead restored successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to restore lead",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSubmit = (data: ClientContact) => {
     if (isEditMode && selectedContact) {
       updateContactMutation.mutate({ id: selectedContact.id, data });
@@ -315,6 +340,11 @@ export default function Contacts() {
   // Filter and sort contacts alphabetically
   const filteredAndSortedContacts = contacts
     .filter((contact) => {
+      // Archive filter
+      if (archiveFilter === "active" && contact.archived) return false;
+      if (archiveFilter === "archived" && !contact.archived) return false;
+
+      // Search filter
       const search = searchQuery.toLowerCase();
       return (
         contact.leadOrProject.toLowerCase().includes(search) ||
@@ -356,15 +386,27 @@ export default function Contacts() {
         </Button>
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search leads..."
-          className="pl-9"
-          value={searchQuery}
-          onChange={(e) => handleSearchChange(e.target.value)}
-          data-testid="input-search-contacts"
-        />
+      <div className="flex gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search leads..."
+            className="pl-9"
+            value={searchQuery}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            data-testid="input-search-contacts"
+          />
+        </div>
+        <Select value={archiveFilter} onValueChange={(value: "active" | "archived" | "all") => setArchiveFilter(value)}>
+          <SelectTrigger className="w-[160px]" data-testid="select-archive-filter">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="active">Active Leads</SelectItem>
+            <SelectItem value="archived">Archived</SelectItem>
+            <SelectItem value="all">All Leads</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Bulk Actions Bar */}
@@ -689,17 +731,29 @@ export default function Contacts() {
                 </Card>
               )}
 
-              {/* Archive Section */}
+              {/* Archive/Restore Section */}
               {selectedContact && isEditMode && !showArchiveConfirm && (
                 <div className="border-t pt-4 mt-6">
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    onClick={() => setShowArchiveConfirm(true)}
-                    data-testid="button-show-archive"
-                  >
-                    Archive Lead
-                  </Button>
+                  {selectedContact.archived ? (
+                    <Button
+                      type="button"
+                      variant="default"
+                      onClick={() => restoreContactMutation.mutate(selectedContact.id)}
+                      disabled={restoreContactMutation.isPending}
+                      data-testid="button-restore-lead"
+                    >
+                      {restoreContactMutation.isPending ? "Restoring..." : "Restore Lead"}
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={() => setShowArchiveConfirm(true)}
+                      data-testid="button-show-archive"
+                    >
+                      Archive Lead
+                    </Button>
+                  )}
                 </div>
               )}
 
