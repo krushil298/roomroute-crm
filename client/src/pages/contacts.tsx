@@ -239,6 +239,30 @@ export default function Contacts() {
     },
   });
 
+  const bulkRestoreContactsMutation = useMutation({
+    mutationFn: async (contactIds: string[]) => {
+      const response = await apiRequest("POST", "/api/contacts/bulk-restore", {
+        contactIds,
+      });
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+      toast({
+        title: "Success",
+        description: `${selectedContactIds.size} leads restored successfully`,
+      });
+      setSelectedContactIds(new Set());
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to restore leads",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSubmit = (data: ClientContact) => {
     if (isEditMode && selectedContact) {
       updateContactMutation.mutate({ id: selectedContact.id, data });
@@ -425,15 +449,28 @@ export default function Contacts() {
             </span>
           </div>
           {selectedContactIds.size > 0 && (
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleBulkArchive}
-              data-testid="button-bulk-archive"
-            >
-              <Archive className="h-4 w-4 mr-2" />
-              Archive Selected ({selectedContactIds.size})
-            </Button>
+            archiveFilter === "archived" ? (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => bulkRestoreContactsMutation.mutate(Array.from(selectedContactIds))}
+                disabled={bulkRestoreContactsMutation.isPending}
+                data-testid="button-bulk-restore"
+              >
+                <Archive className="h-4 w-4 mr-2" />
+                {bulkRestoreContactsMutation.isPending ? "Restoring..." : `Restore Selected (${selectedContactIds.size})`}
+              </Button>
+            ) : (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleBulkArchive}
+                data-testid="button-bulk-archive"
+              >
+                <Archive className="h-4 w-4 mr-2" />
+                Archive Selected ({selectedContactIds.size})
+              </Button>
+            )
           )}
         </div>
       )}
