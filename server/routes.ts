@@ -33,28 +33,9 @@ function getEffectiveOrgId(user: any): string | undefined {
 }
 
 // Helper function to construct sender name for emails
-// Handles null values properly and has special case for super admin
+// Returns "Hotel Sales" as the sender name for all emails
 function getSenderName(user: any): string {
-  // Special handling for super admin
-  if (user?.email === "josh.gaddis@roomroute.org" || user?.role === "super_admin") {
-    return "Josh Gaddis";
-  }
-  
-  // For other users, construct name from firstName and lastName if available
-  const firstName = user?.firstName?.trim();
-  const lastName = user?.lastName?.trim();
-  
-  if (firstName && lastName) {
-    return `${firstName} ${lastName}`;
-  } else if (firstName) {
-    return firstName;
-  } else if (lastName) {
-    return lastName;
-  } else if (user?.email) {
-    return user.email;
-  }
-  
-  return "RoomRoute Team";
+  return "Hotel Sales";
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
