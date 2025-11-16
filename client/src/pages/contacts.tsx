@@ -399,7 +399,7 @@ export default function Contacts() {
         </div>
         <Select value={archiveFilter} onValueChange={(value: "active" | "archived" | "all") => setArchiveFilter(value)}>
           <SelectTrigger className="w-[160px]" data-testid="select-archive-filter">
-            <SelectValue />
+            <SelectValue placeholder="Filter leads" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="active">Active Leads</SelectItem>
