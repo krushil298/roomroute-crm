@@ -5,6 +5,7 @@ import { isAuthenticated, getUserFromSession } from "./auth";
 import authRoutes from "./authRoutes";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
+import passport from "passport";
 import { z } from "zod";
 import {
   insertContactSchema,
@@ -65,6 +66,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
     name: 'connect.sid',
   }));
+
+  // Initialize Passport
+  app.use(passport.initialize());
+  app.use(passport.session());
 
   // Mount auth routes
   app.use("/api/auth", authRoutes);

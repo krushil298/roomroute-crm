@@ -3,8 +3,108 @@ import { z } from "zod";
 import { storage } from "./storage";
 import { hashPassword, comparePassword, isAuthenticated, getUserFromSession, setUserSession, clearUserSession } from "./auth";
 import crypto from "crypto";
+import passport from "passport";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 
 const router = Router();
+
+// Configure Google OAuth Strategy
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  passport.use(
+    new GoogleStrategy(
+      {
+        clientID: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        callbackURL: `${process.env.APP_URL || 'http://localhost:5000'}/api/auth/google/callback`,
+      },
+      async (accessToken, refreshToken, profile, done) => {
+        try {
+          const email = profile.emails?.[0]?.value;
+          if (!email) {
+            return done(new Error("No email found in Google profile"));
+          }
+
+          // Check if user exists
+          let user = await storage.getUserByEmail(email);
+
+          // Check for pending invitations
+          const pendingInvitations = await storage.getInvitationsByEmail(email);
+          const pendingInvite = pendingInvitations.find(inv => inv.status === "pending");
+
+          if (!user) {
+            // Create new user from Google profile
+            user = await storage.upsertUser({
+              email,
+              firstName: profile.name?.givenName || profile.displayName || "User",
+              lastName: profile.name?.familyName || "",
+              profileImageUrl: profile.photos?.[0]?.value,
+              authProvider: "google",
+              role: pendingInvite ? pendingInvite.role : "user",
+              organizationId: pendingInvite ? pendingInvite.organizationId : undefined,
+              currentOrganizationId: pendingInvite ? pendingInvite.organizationId : undefined,
+            });
+
+            // Auto-accept pending invitation if exists
+            if (pendingInvite) {
+              await storage.addUserToOrganization({
+                userId: user.id,
+                organizationId: pendingInvite.organizationId,
+                role: pendingInvite.role,
+                active: true,
+              });
+              await storage.updateInvitationStatus(pendingInvite.id, "accepted", new Date());
+              user = await storage.getUser(user.id) || user;
+            }
+          } else if (pendingInvite) {
+            // Existing user with pending invitation
+            const userOrgs = await storage.getUserOrganizations(user.id);
+            const alreadyMember = userOrgs.some(org => org.organizationId === pendingInvite.organizationId);
+
+            if (!alreadyMember) {
+              await storage.addUserToOrganization({
+                userId: user.id,
+                organizationId: pendingInvite.organizationId,
+                role: pendingInvite.role,
+                active: true,
+              });
+
+              if (!user.organizationId) {
+                await storage.upsertUser({
+                  id: user.id,
+                  email: user.email,
+                  organizationId: pendingInvite.organizationId,
+                  currentOrganizationId: pendingInvite.organizationId,
+                });
+                user.organizationId = pendingInvite.organizationId;
+                user.currentOrganizationId = pendingInvite.organizationId;
+              }
+
+              await storage.updateInvitationStatus(pendingInvite.id, "accepted", new Date());
+              user = await storage.getUser(user.id) || user;
+            }
+          }
+
+          done(null, user);
+        } catch (error) {
+          done(error as Error);
+        }
+      }
+    )
+  );
+
+  passport.serializeUser((user: any, done) => {
+    done(null, user.id);
+  });
+
+  passport.deserializeUser(async (id: string, done) => {
+    try {
+      const user = await storage.getUser(id);
+      done(null, user);
+    } catch (error) {
+      done(error);
+    }
+  });
+}
 
 // Validation schemas
 const signupSchema = z.object({
@@ -402,5 +502,45 @@ router.post("/reset-password", async (req, res) => {
     res.status(500).json({ message: "Failed to reset password" });
   }
 });
+
+// Google OAuth routes
+router.get("/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+
+router.get(
+  "/google/callback",
+  passport.authenticate("google", { failureRedirect: "/login?error=google_auth_failed" }),
+  async (req, res) => {
+    try {
+      // User is available in req.user from passport
+      const user = req.user as any;
+
+      if (!user) {
+        return res.redirect("/login?error=no_user");
+      }
+
+      // Set our custom session
+      setUserSession(req, user);
+
+      // Save session explicitly
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((err) => {
+          if (err) {
+            console.error("[GOOGLE AUTH] Session save error:", err);
+            reject(err);
+          } else {
+            console.log("[GOOGLE AUTH] Session saved successfully");
+            resolve();
+          }
+        });
+      });
+
+      // Redirect to dashboard
+      res.redirect("/");
+    } catch (error) {
+      console.error("[GOOGLE AUTH] Callback error:", error);
+      res.redirect("/login?error=auth_failed");
+    }
+  }
+);
 
 export default router;
