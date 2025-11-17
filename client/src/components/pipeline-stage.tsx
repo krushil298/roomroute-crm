@@ -15,6 +15,7 @@ interface Deal {
   title: string;
   value: number;
   contact: string;
+  isContact?: boolean;
 }
 
 interface PipelineStageProps {
@@ -55,17 +56,17 @@ export function PipelineStage({ stage, deals, color, onDealClick, onDeleteDeal }
               className="p-2 hover-elevate active-elevate-2 transition-all relative group"
               data-testid={`card-deal-${deal.id}`}
             >
-              <div className="space-y-1" onClick={() => onDealClick?.(deal.id)} style={{ cursor: onDealClick ? 'pointer' : 'default' }}>
+              <div className="space-y-1" onClick={() => !deal.isContact && onDealClick?.(deal.id)} style={{ cursor: (!deal.isContact && onDealClick) ? 'pointer' : 'default' }}>
                 <div className="flex items-start justify-between gap-2">
                   <p className="font-medium text-sm line-clamp-1 flex-1" data-testid={`text-deal-title-${deal.id}`}>
                     {deal.title}
                   </p>
-                  {onDealClick && onDeleteDeal && (
+                  {!deal.isContact && onDealClick && onDeleteDeal && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           className="h-6 w-6"
                           data-testid={`button-deal-menu-${deal.id}`}
                         >
@@ -78,8 +79,8 @@ export function PipelineStage({ stage, deals, color, onDealClick, onDeleteDeal }
                           Edit Deal
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem 
-                          className="text-destructive" 
+                        <DropdownMenuItem
+                          className="text-destructive"
                           onClick={(e) => { e.stopPropagation(); onDeleteDeal(deal.id); }}
                           data-testid={`menu-delete-${deal.id}`}
                         >
