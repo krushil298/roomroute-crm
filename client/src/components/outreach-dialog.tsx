@@ -27,6 +27,7 @@ const STATUS_OPTIONS = [
   { value: "no-change", label: "(No status change)" },
   { value: "qualified", label: "Qualified" },
   { value: "proposal", label: "Proposal" },
+  { value: "negotiation", label: "Negotiation" },
   { value: "closed", label: "Closed" },
 ];
 
