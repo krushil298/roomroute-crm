@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import logoUrl from "@assets/image_1762307821152.png";
+import hotelImage from "@assets/hotel-building.jpg.png";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -185,7 +186,7 @@ export default function Login() {
       {/* Right Side - Building Image */}
       <div className="hidden lg:flex flex-1 relative overflow-hidden">
         <img
-          src="https://images.unsplash.com/photo-1582268611958-ebfd161ef9cf?q=80&w=2070&auto=format&fit=crop"
+          src={hotelImage}
           alt="Modern Hotel Building"
           className="absolute inset-0 w-full h-full object-cover"
         />
