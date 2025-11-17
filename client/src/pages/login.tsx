@@ -69,11 +69,11 @@ export default function Login() {
       <div className="flex-1 flex items-center justify-center p-8 bg-[#0f2942]">
         <div className="w-full max-w-md space-y-8">
           {/* Logo and Branding */}
-          <div className="space-y-6">
+          <div className="space-y-6 text-center">
             <img
               src={logoUrl}
               alt="RoomRoute Logo"
-              className="h-16 w-auto"
+              className="h-16 w-auto mx-auto"
             />
             <div>
               <h1 className="text-5xl font-bold text-white mb-2">RoomRoute</h1>
