@@ -109,8 +109,8 @@ export default function Deals() {
 
   const deleteDealMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await apiRequest("DELETE", `/api/deals/${id}`);
-      return await response.json();
+      await apiRequest("DELETE", `/api/deals/${id}`);
+      return { success: true };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/deals"] });
